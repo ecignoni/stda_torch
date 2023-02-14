@@ -6,8 +6,10 @@ from .utils import sqrtm
 
 def charge_density_monopole(ovlp: torch.Tensor, natm: int, ao_labels: List, mo_coeff_a: torch.Tensor, mo_coeff_b: torch.Tensor) -> torch.Tensor:
     """computes the q_pq^A using Löwdin population analysis.
+
         q_pq^A = Σ_(μ ϵ A) C'μp^(a) C'μq^(b)
         C' = S^(½) C
+
     Args:
         ovlp (n_ao, n_ao): AO overlap matrix (S).
         natm: number of atoms.
