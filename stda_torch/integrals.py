@@ -90,3 +90,27 @@ def gamma_J(
     denom = ((R * ax * eta) ** beta + 1) ** (1.0 / beta)
     gamma = ax * eta / denom
     return gamma
+
+
+def gamma_K(
+    coords: torch.Tensor, atom_pure_symbols: List[str], ax: int, alpha: int = None
+) -> torch.Tensor:
+    """computes the Exchange gamma matrix (Matanaga-Nishimoto-Ohno-Klopman)
+
+        γ(A, B)^K = (1 / (R_AB^α + η^-α))^(1/α)
+
+    Args:
+        coords (n_atoms, 3): coordinates of the molecule in Bohr.
+        atom_pure_symbols: list of atom symbols (e.g., ['O', 'H', 'H'] for water).
+        ax: fraction of exact Hartree Fock exchange.
+        alpha: α parameter of sTDA approximate integrals.
+    Returns:
+        γ(A, B)^K: matrix of Coulomb gamma values.
+    """
+    R = distance_matrix(coords)
+    eta = hardness_matrix(atom_pure_symbols)
+    if alpha is None:
+        alpha, _ = get_alpha_beta(ax)
+    denom = ((R * eta) ** alpha + 1) ** (1.0 / alpha)
+    gamma = eta / denom
+    return gamma
