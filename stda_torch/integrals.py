@@ -1,8 +1,10 @@
+from typing import List
 import torch
+from .parameters import chemical_hardness
 from .utils import sqrtm
 
 
-def charge_density_monopole(ovlp: torch.Tensor, natm: int, ao_labels: list, mo_coeff_a: torch.Tensor, mo_coeff_b: torch.Tensor) -> torch.Tensor:
+def charge_density_monopole(ovlp: torch.Tensor, natm: int, ao_labels: List, mo_coeff_a: torch.Tensor, mo_coeff_b: torch.Tensor) -> torch.Tensor:
     """computes the q_pq^A using Löwdin population analysis.
         q_pq^A = Σ_(μ ϵ A) C'μp^(a) C'μq^(b)
         C' = S^(½) C
@@ -40,3 +42,19 @@ def distance_matrix(coords: torch.Tensor) -> torch.Tensor:
     """
     R = torch.cdist(coords, coords, p=2.0)
     return R
+
+
+def hardness_matrix(atom_pure_symbols: List[str]) -> torch.Tensor:
+    """computes the matrix of average chemical hardnesses
+
+        η_ij = (η_i + η_j) / 2
+
+    Args:
+        atom_pure_symbols: list of atom symbols (e.g., ['O', 'H', 'H'] for water).
+    Returns:
+        η: matrix of average chemical hardness
+    """
+    hrd = chemical_hardness
+    eta = torch.DoubleTensor([hrd[sym] for sym in atom_pure_symbols])
+    eta = (eta[:, None] + eta[None, :]) / 2
+    return eta
