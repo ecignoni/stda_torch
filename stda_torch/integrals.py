@@ -26,3 +26,17 @@ def charge_density_monopole(ovlp, natm, ao_labels, mo_coeff_a, mo_coeff_b):
     for i, (atidx, *_) in enumerate(ao_labels):
         q[atidx] += torch.einsum("p,q->pq", coeff_orth_a[i], coeff_orth_b[i]).real
     return q
+
+
+def distance_matrix(coords):
+    """computes the matrix of pairwise distances.
+
+        R_ij = ‖c_i - c_j‖₂
+
+    Args:
+        coords: coordinates of the molecule in Bohr.
+    Returns:
+        R : matrix of pairwise distances
+    """
+    R = torch.cdist(coords, coords, p=2.0)
+    return R
