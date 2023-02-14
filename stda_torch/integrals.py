@@ -1,10 +1,16 @@
 from typing import List
 import torch
-from .parameters import chemical_hardness
+from .parameters import chemical_hardness, get_alpha_beta
 from .utils import sqrtm
 
 
-def charge_density_monopole(ovlp: torch.Tensor, natm: int, ao_labels: List, mo_coeff_a: torch.Tensor, mo_coeff_b: torch.Tensor) -> torch.Tensor:
+def charge_density_monopole(
+    ovlp: torch.Tensor,
+    natm: int,
+    ao_labels: List,
+    mo_coeff_a: torch.Tensor,
+    mo_coeff_b: torch.Tensor,
+) -> torch.Tensor:
     """computes the q_pq^A using Löwdin population analysis.
 
         q_pq^A = Σ_(μ ϵ A) C'μp^(a) C'μq^(b)
@@ -40,7 +46,7 @@ def distance_matrix(coords: torch.Tensor) -> torch.Tensor:
     Args:
         coords (n_atoms, 3): coordinates of the molecule in Bohr.
     Returns:
-        R : matrix of pairwise distances
+        R : matrix of pairwise distances.
     """
     R = torch.cdist(coords, coords, p=2.0)
     return R
@@ -54,9 +60,33 @@ def hardness_matrix(atom_pure_symbols: List[str]) -> torch.Tensor:
     Args:
         atom_pure_symbols: list of atom symbols (e.g., ['O', 'H', 'H'] for water).
     Returns:
-        η: matrix of average chemical hardness
+        η: matrix of average chemical hardness.
     """
     hrd = chemical_hardness
     eta = torch.DoubleTensor([hrd[sym] for sym in atom_pure_symbols])
     eta = (eta[:, None] + eta[None, :]) / 2
     return eta
+
+
+def gamma_J(
+    coords: torch.Tensor, atom_pure_symbols: List[str], ax: int, beta: int = None
+) -> torch.Tensor:
+    """computes the Coulomb gamma matrix (Matanaga-Nishimoto-Ohno-Klopman)
+
+        γ(A, B)^J = (1 / ( R_AB^β + (ax * η)^-β  ))^(1/β)
+
+    Args:
+        coords (n_atoms, 3): coordinates of the molecule in Bohr.
+        atom_pure_symbols: list of atom symbols (e.g., ['O', 'H', 'H'] for water).
+        ax: fraction of exact Hartree Fock exchange.
+        beta: β parameter of sTDA approximate integrals.
+    Returns:
+        γ(A, B)^J: matrix of Coulomb gamma values.
+    """
+    R = distance_matrix(coords)
+    eta = hardness_matrix(atom_pure_symbols)
+    if beta is None:
+        _, beta = get_alpha_beta(ax)
+    denom = ((R * ax * eta) ** beta + 1) ** (1.0 / beta)
+    gamma = ax * eta / denom
+    return gamma
