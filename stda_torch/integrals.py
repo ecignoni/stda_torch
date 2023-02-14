@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import torch
 from .parameters import chemical_hardness, get_alpha_beta
 from .utils import sqrtm
@@ -114,3 +114,65 @@ def gamma_K(
     denom = ((R * eta) ** alpha + 1) ** (1.0 / alpha)
     gamma = eta / denom
     return gamma
+
+
+def eri_mo_monopole(
+    ovlp: torch.Tensor,
+    natm: int,
+    ao_labels: List,
+    mo_coeff: torch.Tensor,
+    mo_occ: torch.Tensor,
+    coords: torch.Tensor,
+    atom_pure_symbols: List[str],
+    ax: int,
+    alpha: int = None,
+    beta: int = None,
+    mode: str = "stda",
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """computes the electron repulsion integrals in the sTDA approximation.
+
+        (pq|rs) = Σ_(A,B) q_pq^A * q_rs^B * γ(A, B)
+
+    if `mode` = 'stda', then it computes only the coulomb and exchange integrals:
+
+        (ij|ab) = Σ_(A,B) q_ij^A * q_ab^B * γ(A, B)^J
+
+        (ia|jb) = Σ_(A,B) q_ia^A * q_jb^B * γ(A, B)^K
+
+    Args:
+        ovlp (n_ao, n_ao): AO overlap matrix (S).
+        natm: number of atoms.
+        ao_labels: list of tuples describing AOs.
+                          same as calling mol.ao_labels(fmt=None) from pyscf.
+                          tuple fmt: (atom_index: int, atom: str, ao_name: str, m_def: str)
+        mo_coeff (n_ao_a, n_mo): MO coefficients matrix (C).
+        mo_occ (n_mo): MO occupancy.
+        coords (n_atoms, 3): coordinates of the molecule in Bohr.
+        atom_pure_symbols: list of atom symbols (e.g., ['O', 'H', 'H'] for water).
+        ax: fraction of exact Hartree Fock exchange.
+        alpha: α parameter of sTDA approximate integrals.
+        beta: β parameter of sTDA approximate integrals.
+        mode: which integral to compute, can be either 'stda' or 'full'.
+              Note: 'full' is here only for debugging, and the only mode that
+              makes sense is the default 'stda' mode.
+    Returns:
+        eri_J (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Coulomb type.
+        eri_K (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Exchange type.
+    """
+    if mode != 'stda' and mode != 'full':
+        raise RuntimeError(f"mode is either 'stda' or 'full', given '{mode}'")
+    gam_J = gamma_J(coords, atom_pure_symbols, ax, beta)
+    gam_K = gamma_K(coords, atom_pure_symbols, ax, alpha)
+    if mode == 'full':
+        q = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff, mo_coeff)
+        eri_J = torch.einsum("Apq,AB,Brs->pqrs", q, gam_J, q)
+        eri_K = torch.einsum("Apq,AB,Brs->pqrs", q, gam_K, q)
+    elif mode == 'stda':
+        occidx = torch.where(mo_occ == 2)[0]
+        nocc = len(occidx)
+        q_oo = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, :nocc], mo_coeff[:, :nocc])
+        q_ov = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, :nocc], mo_coeff[:, nocc:])
+        q_vv = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, nocc:], mo_coeff[:, nocc:])
+        eri_J = torch.einsum("Aij,AB,Bab->iajb", q_oo, gam_J, q_vv)
+        eri_K = torch.einsum("Aia,AB,Bjb->iajb", q_ov, gam_K, q_ov)
+    return eri_J, eri_K
