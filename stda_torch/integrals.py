@@ -128,6 +128,8 @@ def eri_mo_monopole(
     alpha: int = None,
     beta: int = None,
     mode: str = "stda",
+    mask_occ: torch.Tensor = None,
+    mask_vir: torch.Tensor = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """computes the electron repulsion integrals in the sTDA approximation.
 
@@ -155,6 +157,10 @@ def eri_mo_monopole(
         mode: which integral to compute, can be either 'stda' or 'full'.
               Note: 'full' is here only for debugging, and the only mode that
               makes sense is the default 'stda' mode.
+        mask_occ: indices of occupied MOs to consider. The first occupied MO
+                  has index 0.
+        mask_vir: indices of virtual MOs to consider. The first virtual MO
+                  has index 0.
     Returns:
         eri_J (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Coulomb type.
         eri_K (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Exchange type.
@@ -169,10 +175,14 @@ def eri_mo_monopole(
         eri_K = torch.einsum("Apq,AB,Brs->pqrs", q, gam_K, q)
     elif mode == 'stda':
         occidx = torch.where(mo_occ == 2)[0]
-        nocc = len(occidx)
-        q_oo = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, :nocc], mo_coeff[:, :nocc])
-        q_ov = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, :nocc], mo_coeff[:, nocc:])
-        q_vv = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, nocc:], mo_coeff[:, nocc:])
+        viridx = torch.where(mo_occ == 0)[0]
+        if mask_occ is not None:
+            occidx = occidx[mask_occ]
+        if mask_vir is not None:
+            viridx = viridx[mask_vir]
+        q_oo = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx])
+        q_ov = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, viridx])
+        q_vv = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, viridx], mo_coeff[:, viridx])
         eri_J = torch.einsum("Aij,AB,Bab->iajb", q_oo, gam_J, q_vv)
         eri_K = torch.einsum("Aia,AB,Bjb->iajb", q_ov, gam_K, q_ov)
     return eri_J, eri_K

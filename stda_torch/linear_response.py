@@ -3,7 +3,7 @@ import torch
 from .integrals import eri_mo_monopole
 
 
-def get_full_ab(
+def get_ab(
     mo_energy: torch.Tensor,
     mo_coeff: torch.Tensor,
     mo_occ: torch.Tensor,
@@ -15,6 +15,8 @@ def get_full_ab(
     ax: int,
     alpha: int = None,
     beta: int = None,
+    mask_occ: torch.Tensor = None,
+    mask_vir: torch.Tensor = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """computes the full matrices A and B in the sTDA approximation.
 
@@ -39,12 +41,20 @@ def get_full_ab(
         ax: fraction of exact Hartree Fock exchange.
         alpha: α parameter of sTDA approximate integrals.
         beta: β parameter of sTDA approximate integrals.
+        mask_occ: indices of occupied MOs to consider. The first occupied MO
+                  has index 0.
+        mask_vir: indices of virtual MOs to consider. The first virtual MO
+                  has index 0.
     Returns:
         A (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): A matrix of the Casida equations.
         B (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): B matrix of the Casida equations.
     """
     occidx = torch.where(mo_occ == 2)[0]
     viridx = torch.where(mo_occ == 0)[0]
+    if mask_occ is not None:
+        occidx = occidx[mask_occ]
+    if mask_vir is not None:
+        viridx = viridx[mask_vir]
     orbv = mo_coeff[:, viridx]
     orbo = mo_coeff[:, occidx]
     nvir = orbv.shape[1]
@@ -67,6 +77,8 @@ def get_full_ab(
         alpha=alpha,
         beta=beta,
         mode="stda",
+        mask_occ=mask_occ,
+        mask_vir=mask_vir,
     )
 
     a += eri_K * 2 - eri_J
