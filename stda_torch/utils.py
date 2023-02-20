@@ -23,9 +23,9 @@ def direct_diagonalization(
         pass
     else:
         raise RuntimeError(f"a.ndim={a.ndim} not supported")
-    e, v = torch.linalg.eig(a)
+    e, v = torch.linalg.eigh(a)
     # trick to get 'idx' of the same length of e
-    e[e < 0] = torch.infty
+    e[e < 0] = float("inf")
     idx = torch.argsort(e)
     e = e[idx][:nstates]
     v = v[:, idx][:, :nstates]
