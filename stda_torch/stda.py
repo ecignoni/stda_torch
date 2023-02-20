@@ -131,15 +131,15 @@ class sTDA:
         )
 
         if self.verbose:
-            print(" {:30s} : {:.8f}".format("occ MO cut-off (eV)", occthr * AU_TO_EV))
-            print(" {:30s} : {:.8f}".format("virtMO cut-off (eV)", virthr * AU_TO_EV))
-            print(" {:30s} : {:.8f}".format("perturbation thr", self.tp))
-            print(" {:30s} : {:.8s}".format("triplet", "F"))
-            print(" {:15s}: {:d}".format("MOs in TDA", len(mask_occ) + len(mask_vir)))
-            print(" {:15s}: {:d}".format("oMOs in TDA", len(mask_occ)))
-            print(" {:15s}: {:d}".format("vMOs in TDA", len(mask_vir)))
+            print("{:30s} : {:.8f}".format("occ MO cut-off (eV)", occthr * AU_TO_EV))
+            print("{:30s} : {:.8f}".format("virtMO cut-off (eV)", virthr * AU_TO_EV))
+            print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
+            print("{:30s} : {:.8s}".format("triplet", "F"))
+            print("{:15s}: {:d}".format("MOs in TDA", len(mask_occ) + len(mask_vir)))
+            print("{:15s}: {:d}".format("oMOs in TDA", len(mask_occ)))
+            print("{:15s}: {:d}".format("vMOs in TDA", len(mask_vir)))
 
-            print("\n SCF atom population (using active MOs):")
+            print("\nSCF atom population (using active MOs):")
             pop = (
                 charge_density_monopole(
                     ovlp=self.ovlp,
@@ -152,6 +152,13 @@ class sTDA:
             )
             pop = torch.einsum("Aii->A", pop)
             print(" ", pop)
+
+            print("\n# electrons in TDA: {:.3f}".format(torch.sum(pop)))
+
+            print("\n")
+            print("{:20s}: {:.8f}".format("ax(DF)", self.ax))
+            print("{:20s}: {:.8f}".format("beta (J)", self.beta))
+            print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
 
         a, b, *metadata = get_ab(
             mo_energy=self.mo_energy,
