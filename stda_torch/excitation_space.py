@@ -1,4 +1,5 @@
-from typing import Tuple
+from __future__ import annotations
+from typing import Tuple, Union
 import torch
 
 AU_TO_EV = 27.211324570273
@@ -69,7 +70,9 @@ def screen_mo(
         return mask_occ, mask_vir
 
 
-def select_csf_by_energy(a: torch.Tensor, e_max: float, verbose: bool = False):
+def select_csf_by_energy(
+    a: torch.Tensor, e_max: float, verbose: bool = False
+) -> Union[torch.Tensor, torch.Tensor]:
     _e_max = e_max / AU_TO_EV
     nocc, nvir, _, _ = a.shape
     diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
@@ -102,7 +105,7 @@ def select_csf_by_perturbation(
     tp: float,
     diag_a: torch.Tensor = None,
     verbose: bool = False,
-):
+) -> Union[torch.Tensor, torch.Tensor, torch.Tensor]:
     nocc, nvir, _, _ = a.shape
     if diag_a is None:
         diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
@@ -126,3 +129,25 @@ def select_csf_by_perturbation(
     e_pt_ncsf = -torch.sum(e_pt[e_u < tp], axis=0)
 
     return idx_scsf, idx_ncsf, e_pt_ncsf
+
+
+def restrict_to_stda_excitation_space(
+    a: torch.Tensor,
+    b,
+    idx_pcsf: torch.Tensor,
+    idx_scsf: torch.Tensor,
+    e_pt_ncsf: torch.Tensor,
+) -> Union[torch.Tensor, torch.Tensor]:
+    nocc, nvir, _, _ = a.shape
+
+    a = a.reshape(nocc * nvir, nocc * nvir)
+    b = b.reshape(nocc * nvir, nocc * nvir)
+
+    a[idx_pcsf, idx_pcsf] += e_pt_ncsf
+
+    idx_active = torch.concatenate((idx_pcsf, idx_scsf))
+
+    a = a[idx_active, :][:, idx_active]
+    b = b[idx_active, :][:, idx_active]
+
+    return a, b
