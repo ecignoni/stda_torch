@@ -12,7 +12,7 @@ def screen_mo(
     e_max: int = 7.0,
     verbose: bool = False,
     mesh_idx: bool = False,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """computes the indices of retained occupied and virtual MOs.
     MOs are retained if their energy falls within a window around the
     HOMO and LUMO. The window is computed as:
@@ -67,7 +67,7 @@ def screen_mo(
             mask_vir[None, None, None, :],
         )
     else:
-        return mask_occ, mask_vir
+        return mask_occ, mask_vir, othr, vthr
 
 
 def select_csf_by_energy(

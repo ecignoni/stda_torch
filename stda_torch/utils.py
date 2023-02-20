@@ -1,6 +1,104 @@
 from __future__ import annotations
-from typing import Union
+from typing import List, Tuple, Union
 import torch
+
+symbol_to_charge = {
+    "  H": 1.0,
+    " He": 2.0,
+    " Li": 3.0,
+    " Be": 4.0,
+    "  B": 5.0,
+    "  C": 6.0,
+    "  N": 7.0,
+    "  O": 8.0,
+    "  F": 9.0,
+    " Ne": 10.0,
+    #     " Na": ,
+    #     " Mg": ,
+    #     " Al": ,
+    #     " Si": ,
+    #     "  P": ,
+    #     "  S": ,
+    #     " Cl": ,
+    #     " Ar": ,
+    #     "  K": ,
+    #     " Ca": ,
+    #     " Sc": ,
+    #     " Ti": ,
+    #     "  V": ,
+    #     " Cr": ,
+    #     " Mn": ,
+    #     " Fe": ,
+    #     " Co": ,
+    #     " Ni": ,
+    #     " Cu": ,
+    #     " Zn": ,
+    #     " Ga": ,
+    #     " Ge": ,
+    #     " As": ,
+    #     " Se": ,
+    #     " Br": ,
+    #     " Kr": ,
+    #     " Rb": ,
+    #     " Sr": ,
+    #     "  Y": ,
+    #     " Zr": ,
+    #     " Nb": ,
+    #     " Mo": ,
+    #     " Tc": ,
+    #     " Ru": ,
+    #     " Rh": ,
+    #     " Pd": ,
+    #     " Ag": ,
+    #     " Cd": ,
+    #     " In": ,
+    #     " Sn": ,
+    #     " Sb": ,
+    #     " Te": ,
+    #     "  I": ,
+    #     " Xe": ,
+    #     " Cs": ,
+    #     " Ba": ,
+    #     " La": ,
+    #     " Ce": ,
+    #     " Pr": ,
+    #     " Nd": ,
+    #     " Pm": ,
+    #     " Sm": ,
+    #     " Eu": ,
+    #     " Gd": ,
+    #     " Tb": ,
+    #     " Dy": ,
+    #     " Ho": ,
+    #     " Er": ,
+    #     " Tm": ,
+    #     " Yb": ,
+    #     " Lu": ,
+    #     " Hf": ,
+    #     " Ta": ,
+    #     "  W": ,
+    #     " Re": ,
+    #     " Os": ,
+    #     " Ir": ,
+    #     " Pt": ,
+    #     " Au": ,
+    #     " Hg": ,
+    #     " Tl": ,
+    #     " Pb": ,
+    #     " Bi": ,
+    #     " Po": ,
+    #     " At": ,
+    #     " Rn": ,
+    #     " Fr": ,
+    #     " Ra": ,
+    #     " Ac": ,
+    #     " Th": ,
+    #     " Pa": ,
+    #     "  U": ,
+    #     " Np": ,
+    #     " Pu": ,
+}
+symbol_to_charge = {k.strip(): v for k, v in symbol_to_charge.items()}
 
 
 def isqrtm(A: torch.Tensor) -> torch.Tensor:
@@ -30,3 +128,18 @@ def direct_diagonalization(
     e = e[idx][:nstates]
     v = v[:, idx][:, :nstates]
     return e, v
+
+
+def mulliken_population(
+    mo_coeff: torch.Tensor,
+    mo_occ: torch.Tensor,
+    ovlp: torch.Tensor,
+    natm: int,
+    ao_labels: List[Tuple[int, str, str, str]],
+) -> torch.Tensor:
+    dm = 2 * torch.matmul(mo_coeff[:, mo_occ == 2], mo_coeff[:, mo_occ == 2].T)
+    pop = torch.einsum("ij,ji->i", dm, ovlp)
+    q = torch.zeros(natm)
+    for i, (atidx, *_) in enumerate(ao_labels):
+        q[atidx] += pop[i]
+    return q, pop
