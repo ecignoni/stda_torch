@@ -1,6 +1,11 @@
 from typing import Tuple
 import torch
 from .integrals import eri_mo_monopole
+from .excitation_space import (
+    select_csf_by_energy,
+    select_csf_by_perturbation,
+    restrict_to_stda_excitation_space,
+)
 
 
 def get_ab(
@@ -17,7 +22,13 @@ def get_ab(
     beta: int = None,
     mask_occ: torch.Tensor = None,
     mask_vir: torch.Tensor = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    excitation_space: str = "stda",
+    e_max: float = None,
+    tp: float = None,
+    verbose: bool = False,
+) -> Tuple[
+    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
+]:
     """computes the full matrices A and B in the sTDA approximation.
 
         A_ia,jb = δ_ia δ_jb (ε_a - ε_i) + 2 (ia|jb)' - (ij | ab)'
@@ -45,6 +56,11 @@ def get_ab(
                   has index 0.
         mask_vir: indices of virtual MOs to consider. The first virtual MO
                   has index 0.
+        excitation_space: whether to use the excitation space of sTDA ('stda')
+                          or the full excitation space ('full')
+        e_max: energy threshold of sTDA
+        tp: perturbative threshold of sTDA
+        verbose: whether to be verbose
     Returns:
         A (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): A matrix of the Casida equations.
         B (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): B matrix of the Casida equations.
@@ -83,4 +99,25 @@ def get_ab(
 
     a += eri_K * 2 - eri_J
 
-    return a, b
+    if excitation_space == "full":
+        idx_pcsf = None
+        idx_scsf = None
+        idx_ncsf = None
+        e_pt_ncsf = None
+
+    elif excitation_space == "stda":
+        if e_max is None:
+            raise RuntimeError("you have to provide e_max if excitation_space='stda'")
+
+        if tp is None:
+            raise RuntimeError("you have to provide tp if excitation_space='stda'")
+
+        idx_pcsf, idx_ncsf = select_csf_by_energy(a, e_max=e_max, verbose=verbose)
+        idx_scsf, idx_ncsf, e_pt_ncsf = select_csf_by_perturbation(
+            a, idx_pcsf, idx_ncsf, e_max=e_max, tp=tp, verbose=verbose
+        )
+        a, b = restrict_to_stda_excitation_space(
+            a, b, idx_pcsf=idx_pcsf, idx_scsf=idx_scsf, e_pt_ncsf=e_pt_ncsf
+        )
+
+    return a, b, idx_pcsf, idx_scsf, idx_ncsf, e_pt_ncsf
