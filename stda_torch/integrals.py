@@ -20,8 +20,9 @@ def charge_density_monopole(
         ovlp (n_ao, n_ao): AO overlap matrix (S).
         natm: number of atoms.
         ao_labels: list of tuples describing AOs.
-                          same as calling mol.ao_labels(fmt=None) from pyscf.
-                          tuple fmt: (atom_index: int, atom: str, ao_name: str, m_def: str)
+                   same as calling mol.ao_labels(fmt=None) from pyscf.
+                   tuple fmt:
+                   (atom_index: int, atom: str, ao_name: str, m_def: str)
         mo_coeff_a (n_ao_a, n_mo_a): MO coefficients matrix (C).
         mo_coeff_b (n_ao_b, n_mo_b): MO coefficients matrix (C).
     Returns:
@@ -165,24 +166,30 @@ def eri_mo_monopole(
         eri_J (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Coulomb type.
         eri_K (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Exchange type.
     """
-    if mode != 'stda' and mode != 'full':
+    if mode != "stda" and mode != "full":
         raise RuntimeError(f"mode is either 'stda' or 'full', given '{mode}'")
     gam_J = gamma_J(coords, atom_pure_symbols, ax, beta)
     gam_K = gamma_K(coords, atom_pure_symbols, ax, alpha)
-    if mode == 'full':
+    if mode == "full":
         q = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff, mo_coeff)
         eri_J = torch.einsum("Apq,AB,Brs->pqrs", q, gam_J, q)
         eri_K = torch.einsum("Apq,AB,Brs->pqrs", q, gam_K, q)
-    elif mode == 'stda':
+    elif mode == "stda":
         occidx = torch.where(mo_occ == 2)[0]
         viridx = torch.where(mo_occ == 0)[0]
         if mask_occ is not None:
             occidx = occidx[mask_occ]
         if mask_vir is not None:
             viridx = viridx[mask_vir]
-        q_oo = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx])
-        q_ov = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, viridx])
-        q_vv = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff[:, viridx], mo_coeff[:, viridx])
+        q_oo = charge_density_monopole(
+            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx]
+        )
+        q_ov = charge_density_monopole(
+            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, viridx]
+        )
+        q_vv = charge_density_monopole(
+            ovlp, natm, ao_labels, mo_coeff[:, viridx], mo_coeff[:, viridx]
+        )
         eri_J = torch.einsum("Aij,AB,Bab->iajb", q_oo, gam_J, q_vv)
         eri_K = torch.einsum("Aia,AB,Bjb->iajb", q_ov, gam_K, q_ov)
     return eri_J, eri_K

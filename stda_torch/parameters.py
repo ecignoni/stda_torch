@@ -1,3 +1,5 @@
+from typing import Tuple
+
 # This is a database of chemical hardnesses computed in
 # D.C. Ghosh, N. Islam, Int. J. Quantum Chem. 110 (2010) 1206–1213.
 # Values in Hartree and multiplied by two.
@@ -100,8 +102,9 @@ chemical_hardness = {
 # Trim whitespaces in key values
 chemical_hardness = {k.strip(): v for k, v in chemical_hardness.items()}
 
+
 # alpha and beta parameters
-def get_alpha_beta(ax):
+def get_alpha_beta(ax: int) -> Tuple[int, int]:
     beta1 = 0.20
     beta2 = 1.83
     alpha1 = 1.42

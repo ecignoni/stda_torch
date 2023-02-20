@@ -9,4 +9,3 @@ setup(
     description=open("README.md").read(),
     packages=["stda_torch"],
 )
-

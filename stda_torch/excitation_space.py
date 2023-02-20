@@ -67,3 +67,62 @@ def screen_mo(
         )
     else:
         return mask_occ, mask_vir
+
+
+def select_csf_by_energy(a: torch.Tensor, e_max: float, verbose: bool = False):
+    _e_max = e_max / AU_TO_EV
+    nocc, nvir, _, _ = a.shape
+    diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
+
+    idx_pcsf = torch.where(diag_a <= _e_max)[0]
+    idx_ncsf = torch.where(diag_a > _e_max)[0]
+
+    # # TODO: should compute the quotient, double check it
+    # pcsf_i = torch.div(idx_pcsf, nvir, rounding_mode="trunc")
+    # pcsf_a = torch.remainder(idx_pcsf, nvir)
+    # pcsf = torch.column_stack((pcsf_i, pcsf_a))
+
+    if idx_pcsf.size()[0] == 0:
+        errmsg = f"No CSF below the energy threshold ({e_max} eV),"
+        errmsg += " you may want to increase it"
+        raise RuntimeError(errmsg) from None
+
+    if verbose:
+        print("%d CSF included by energy" % len(idx_pcsf))
+        print("%d considered in PT2" % len(idx_ncsf))
+
+    return idx_pcsf, idx_ncsf
+
+
+def select_csf_by_perturbation(
+    a: torch.Tensor,
+    idx_pcsf: torch.Tensor,
+    idx_ncsf: torch.Tensor,
+    e_max: int,
+    tp: float,
+    diag_a: torch.Tensor = None,
+    verbose: bool = False,
+):
+    nocc, nvir, _, _ = a.shape
+    if diag_a is None:
+        diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
+    a_uv = a.reshape(nocc * nvir, nocc * nvir)[idx_ncsf, :][:, idx_pcsf]
+    denom = diag_a[idx_ncsf, None] - diag_a[idx_pcsf]
+
+    e_pt = torch.divide(
+        a_uv**2,
+        denom,
+    )
+    e_u = torch.sum(e_pt, axis=1)
+
+    idx_scsf = idx_ncsf[e_u >= tp]
+    idx_ncsf = idx_ncsf[e_u < tp]
+
+    if verbose:
+        print("%d CSF included by PT" % len(idx_scsf))
+        print("%d CSF in total" % (len(idx_scsf) + len(idx_pcsf)))
+
+    # perturbative contribution
+    e_pt_ncsf = -torch.sum(e_pt[e_u < tp], axis=0)
+
+    return idx_scsf, idx_ncsf, e_pt_ncsf
