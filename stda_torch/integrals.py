@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import List, Tuple
 import torch
 from .parameters import chemical_hardness, get_alpha_beta

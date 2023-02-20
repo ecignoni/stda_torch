@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Tuple
 import torch
 from .integrals import eri_mo_monopole

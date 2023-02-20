@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Tuple
 
 # This is a database of chemical hardnesses computed in
