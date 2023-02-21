@@ -199,11 +199,30 @@ def select_csf_by_perturbation(
 
 def restrict_to_stda_excitation_space(
     a: torch.Tensor,
-    b,
+    b: torch.Tensor,
     idx_pcsf: torch.Tensor,
     idx_scsf: torch.Tensor,
     e_pt_ncsf: torch.Tensor,
 ) -> Union[torch.Tensor, torch.Tensor]:
+    """yields new A, B matrices with truncated CI space
+
+    Given the set of indices for P-CSFs and S-CSFs, the active
+    space in sTDA, yields the corresponding A and B matrices
+    truncated to that subspace.
+
+    The perturbative interaction of N-CSFs with P-CSFs is summed
+    to the corresponding diagonal elements of A.
+
+    Args:
+        a: A matrix of the Casida equation
+        b: B matrix of the Casida equation
+        idx_pcsf: indices of P-CSFs
+        idx_scsf: indices of S-CSFs
+        e_pt_ncsf: perturbative interaction of N-CSFs with P-CSFs
+    Returns:
+        a: A matrix truncated to the sTDA CI space
+        b: B matrix truncated to the sTDA CI space
+    """
     nocc, nvir, _, _ = a.shape
 
     a = a.reshape(nocc * nvir, nocc * nvir)
