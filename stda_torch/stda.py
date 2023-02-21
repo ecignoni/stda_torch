@@ -148,7 +148,11 @@ class sTDA:
         qab = torch.einsum("Auu->Au", qab)
         centers = 1.0 / torch.einsum("Au->u", qab**2)
         for i, (e, c) in enumerate(zip(ene_vir, centers)):
-            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * AU_TO_EV, c))
+            print(
+                "{:^8d} {:^8.3f} {:.1f}".format(
+                    i + len(self.mask_occ) + 1, e * AU_TO_EV, c
+                )
+            )
             if i == 10:
                 break
 
@@ -282,13 +286,14 @@ class sTDA:
             indices = torch.LongTensor(
                 [[o, nocc + v] for o in occ_idx for v in vir_idx]
             )
-            print("excitation energies, transition moments and TDA amplitudes")
+            print("\nexcitation energies, transition moments and TDA amplitudes")
             print("state    eV      nm       fL        Rv(corr)")
             for i, (e, x) in enumerate(zip(self.e, self.x)):
-                top3values, top3indices = torch.topk(abs(x.reshape(-1)), 3)
+                _, top3indices = torch.topk(abs(x.reshape(-1)), 3)
                 top3_ia_pairs = indices[top3indices]
+                top3values = x.reshape(-1)[top3indices]
                 print(
-                    "{:5d} {:10.3f} {:10.1f} {:s} {:s} {:.2f}({:4d}->{:4d}) {:.2f}({:4d}->{:4d}) {:.2f}({:4d}->{:4d})".format(
+                    "{:<5d} {:^8.3f} {:^8.1f} {:^9s} {:^9s} {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d})".format(
                         i + 1,
                         e * AU_TO_EV,
                         1e7 / (e * 2.19474625e5),
