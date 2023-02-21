@@ -73,6 +73,24 @@ def screen_mo(
 def select_csf_by_energy(
     a: torch.Tensor, e_max: float, verbose: bool = False
 ) -> Union[torch.Tensor, torch.Tensor]:
+    """selects CSFs according to their energy
+
+    Given a threshold ε_max, divides the set of CSF in A in two:
+    P-CSF (primary CIS configurations) and N-CSF (neglected CIS
+    configurations). A CSF is classified as P-CSF if its energy
+    is below the threshold:
+
+        ε_ia <= ε_max => P-CSF
+        e_ia >  ε_max => N-CSF
+
+    Args:
+        a: A matrix of the Casida equations
+        e_max: energy threshold of sTDA
+        verbose: whether to be verbose
+    Returns:
+        idx_pcsf: indices of P-CSF
+        idx_ncsf: indices of N-CSF
+    """
     _e_max = e_max / AU_TO_EV
     nocc, nvir, _, _ = a.shape
     diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
