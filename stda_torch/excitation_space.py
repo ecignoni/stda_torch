@@ -110,7 +110,20 @@ def select_csf_by_energy(
     return idx_pcsf, idx_ncsf
 
 
-def csf_idx_as_ia(idx_csf, nvir):
+def csf_idx_as_ia(idx_csf: torch.Tensor, nvir: int) -> torch.Tensor:
+    """rewrites the indices of a CSF
+
+    Given a set of CSF indices and the number of virtual orbitals,
+    rewrites the CSF indices as a pair [i, a], where i is the index
+    of an occupied orbital, and a is the index of a virtual orbital.
+    Note that a indices start from 0 (the first virtual orbital).
+
+    Args:
+        idx_csf: indices of a set of CSFs
+        nvir: number of virtual MOs
+    Returns:
+        new_idx: indices of the set of CSFs, rewritten as [i, a] pairs
+    """
     csf_i = torch.div(idx_csf, nvir, rounding_mode="trunc")
     csf_a = torch.remainder(idx_csf, nvir)
     return torch.column_stack((csf_i, csf_a))
