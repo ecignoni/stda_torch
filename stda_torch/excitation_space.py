@@ -80,11 +80,6 @@ def select_csf_by_energy(
     idx_pcsf = torch.where(diag_a <= _e_max)[0]
     idx_ncsf = torch.where(diag_a > _e_max)[0]
 
-    # # TODO: should compute the quotient, double check it
-    # pcsf_i = torch.div(idx_pcsf, nvir, rounding_mode="trunc")
-    # pcsf_a = torch.remainder(idx_pcsf, nvir)
-    # pcsf = torch.column_stack((pcsf_i, pcsf_a))
-
     if idx_pcsf.size()[0] == 0:
         errmsg = f"No CSF below the energy threshold ({e_max} eV),"
         errmsg += " you may want to increase it"
@@ -95,6 +90,12 @@ def select_csf_by_energy(
         print("%d considered in PT2" % len(idx_ncsf))
 
     return idx_pcsf, idx_ncsf
+
+
+def csf_idx_as_ia(idx_csf, nvir):
+    csf_i = torch.div(idx_csf, nvir, rounding_mode="trunc")
+    csf_a = torch.remainder(idx_csf, nvir)
+    return torch.column_stack((csf_i, csf_a))
 
 
 def select_csf_by_perturbation(

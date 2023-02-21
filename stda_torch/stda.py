@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import List, Tuple
 
+import time
 from datetime import datetime
 
 from .parameters import get_alpha_beta
 from .utils import symbol_to_charge, direct_diagonalization
-from .excitation_space import screen_mo, AU_TO_EV
+from .excitation_space import screen_mo, AU_TO_EV, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
 
@@ -227,6 +228,11 @@ class sTDA:
 
         self.idx_pcsf, self.idx_scsf, self.idx_ncsf, self.e_pt_ncsf = meta
 
+        nvir = len(self.mask_vir)
+        self.pcsf = csf_idx_as_ia(self.idx_pcsf, nvir)
+        self.scsf = csf_idx_as_ia(self.idx_scsf, nvir)
+        self.ncsf = csf_idx_as_ia(self.idx_ncsf, nvir)
+
         if self.verbose:
             print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
             print(
@@ -241,9 +247,12 @@ class sTDA:
 
             print("diagonalizing...")
 
-        self.e, self.x = direct_diagonalization(a, nstates=self.nstates)
+        start = time.perf_counter()
+        self.e, x = direct_diagonalization(a, nstates=self.nstates)
+        end = time.perf_counter()
 
         if self.verbose:
+            print("estimated time (min)      {:.1f}".format((end - start) / 60.0))
             print(
                 "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
                     self.e.shape[0],
@@ -252,4 +261,50 @@ class sTDA:
                 )
             )
 
-            print("sTDA done.")
+        # sTDA transition amplitudes
+        nocc, nvir = len(self.mask_occ), len(self.mask_vir)
+        xy = [(xi, 0.0) for xi in x.T]
+        active = torch.concatenate((self.pcsf, self.scsf))
+        self.x = []
+        self.y = []
+        for x, y in xy:
+            new_x = torch.zeros((nocc, nvir))
+            new_y = torch.zeros((nocc, nvir))
+            new_x[active[:, 0], active[:, 1]] = x
+            self.x.append(new_x)
+            self.y.append(new_y)
+        self.x = torch.stack(self.x)
+        self.y = torch.stack(self.y)
+
+        if self.verbose:
+            occ_idx = torch.arange(nocc)
+            vir_idx = torch.arange(nvir)
+            indices = torch.LongTensor(
+                [[o, nocc + v] for o in occ_idx for v in vir_idx]
+            )
+            print("excitation energies, transition moments and TDA amplitudes")
+            print("state    eV      nm       fL        Rv(corr)")
+            for i, (e, x) in enumerate(zip(self.e, self.x)):
+                top3values, top3indices = torch.topk(abs(x.reshape(-1)), 3)
+                top3_ia_pairs = indices[top3indices]
+                print(
+                    "{:5d} {:10.3f} {:10.1f} {:s} {:s} {:.2f}({:4d}->{:4d}) {:.2f}({:4d}->{:4d}) {:.2f}({:4d}->{:4d})".format(
+                        i + 1,
+                        e * AU_TO_EV,
+                        1e7 / (e * 2.19474625e5),
+                        "n.a.",
+                        "n.a.",
+                        top3values[0],
+                        top3_ia_pairs[0][0] + 1,
+                        top3_ia_pairs[0][1] + 1,
+                        top3values[1],
+                        top3_ia_pairs[1][0] + 1,
+                        top3_ia_pairs[1][1] + 1,
+                        top3values[2],
+                        top3_ia_pairs[2][0] + 1,
+                        top3_ia_pairs[2][1] + 1,
+                    )
+                )
+
+        if self.verbose:
+            print("\nsTDA done.")
