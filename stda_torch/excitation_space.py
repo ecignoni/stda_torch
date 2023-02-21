@@ -138,6 +138,40 @@ def select_csf_by_perturbation(
     diag_a: torch.Tensor = None,
     verbose: bool = False,
 ) -> Union[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """selects CSFs using perturbation theory
+
+    Given a set of P-CSFs (primary) and a set of N-CSFs (neglected),
+    evaluates the perturbative contribution of the N-CSFs and possibly
+    retains some of the N-CSFs. The retained set of N-CSFs is called
+    S-CSFs (secondary CI configurations).
+
+    The perturbative contribution is evaluated as:
+
+        E_u^(2) = Σ_v^(P-CSF) |A_uv|^2 / (E_u - E_v)
+
+        where u=ia and v=jb
+
+    A N-CSF indexed by u is relabeled S-CSF if E_u^(2) >= τ, where
+    τ is a user-defined threshold.
+
+    The perturbative energy of the remaining N-CSF is summed for each
+    P-CSF and returned:
+
+        E_v^(2) = Σ_u^(N-CSF) |A_uv|^2 / (E_u - E_v)
+
+    Args:
+        a: A matrix of the Casida equations
+        idx_pcsf: indices of P-CSFs
+        idx_ncsf: indices of N-CSFs
+        e_max: energy threshold of sTDA
+        tp: perturbative threshold of sTDA (τ)
+        diag_a: diagonal elements of A
+        verbose: whether to be verbose
+    Returns:
+        idx_scsf: indices of S-CSFs
+        idx_ncsf: indices of N-CSFs
+        e_pt_ncsf: perturbative interaction of N-CSFs to P-CSFs
+    """
     nocc, nvir, _, _ = a.shape
     if diag_a is None:
         diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
