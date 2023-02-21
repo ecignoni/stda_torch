@@ -4,7 +4,7 @@ from typing import List, Tuple
 from datetime import datetime
 
 from .parameters import get_alpha_beta
-from .utils import symbol_to_charge
+from .utils import symbol_to_charge, direct_diagonalization
 from .excitation_space import screen_mo, AU_TO_EV
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
@@ -115,7 +115,44 @@ class sTDA:
         print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
         print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
 
-    def kernel(self):
+    def print_ordered_frontier_orbitals(self):
+        print("ordered frontier orbitals")
+        print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
+
+        ene_occ = self.mo_energy[self.mask_occ]
+        qij = charge_density_monopole(
+            ovlp=self.ovlp,
+            natm=self.natm,
+            ao_labels=self.ao_labels,
+            mo_coeff_a=self.mo_coeff[:, self.mask_occ],
+            mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+        )
+        qij = torch.einsum("Aii->Ai", qij)
+        centers = 1.0 / torch.einsum("Ai->i", qij**2)
+        for i, (e, c) in enumerate(zip(ene_occ, centers)):
+            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * AU_TO_EV, c))
+            if i == 10:
+                break
+
+        print()
+        nocc = sum(self.mo_occ == 2)
+        ene_vir = self.mo_energy[nocc + self.mask_vir]
+        qab = charge_density_monopole(
+            ovlp=self.ovlp,
+            natm=self.natm,
+            ao_labels=self.ao_labels,
+            mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
+            mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
+        )
+        qab = torch.einsum("Auu->Au", qab)
+        centers = 1.0 / torch.einsum("Au->u", qab**2)
+        for i, (e, c) in enumerate(zip(ene_vir, centers)):
+            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * AU_TO_EV, c))
+            if i == 10:
+                break
+
+    def kernel(self, nstates=3):
+        self.nstates = nstates
         if self.verbose:
             self.welcome()
             self.all_credits_to_grimme()
@@ -126,31 +163,39 @@ class sTDA:
             print("=" * 65)
             print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
 
-        mask_occ, mask_vir, occthr, virthr = screen_mo(
+        self.mask_occ, self.mask_vir, self.occthr, self.virthr = screen_mo(
             mo_energy=self.mo_energy, mo_occ=self.mo_occ, ax=self.ax, e_max=self.e_max
         )
 
         if self.verbose:
-            print("{:30s} : {:.8f}".format("occ MO cut-off (eV)", occthr * AU_TO_EV))
-            print("{:30s} : {:.8f}".format("virtMO cut-off (eV)", virthr * AU_TO_EV))
+            print(
+                "{:30s} : {:.8f}".format("occ MO cut-off (eV)", self.occthr * AU_TO_EV)
+            )
+            print(
+                "{:30s} : {:.8f}".format("virtMO cut-off (eV)", self.virthr * AU_TO_EV)
+            )
             print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
             print("{:30s} : {:.8s}".format("triplet", "F"))
-            print("{:15s}: {:d}".format("MOs in TDA", len(mask_occ) + len(mask_vir)))
-            print("{:15s}: {:d}".format("oMOs in TDA", len(mask_occ)))
-            print("{:15s}: {:d}".format("vMOs in TDA", len(mask_vir)))
+            print(
+                "{:15s}: {:d}".format(
+                    "MOs in TDA", len(self.mask_occ) + len(self.mask_vir)
+                )
+            )
+            print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
+            print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
 
             print("\nSCF atom population (using active MOs):")
-            pop = (
+            qij = (
                 charge_density_monopole(
                     ovlp=self.ovlp,
                     natm=self.natm,
                     ao_labels=self.ao_labels,
-                    mo_coeff_a=self.mo_coeff[:, mask_occ],
-                    mo_coeff_b=self.mo_coeff[:, mask_occ],
+                    mo_coeff_a=self.mo_coeff[:, self.mask_occ],
+                    mo_coeff_b=self.mo_coeff[:, self.mask_occ],
                 )
                 * 2  # noqa: W503
             )
-            pop = torch.einsum("Aii->A", pop)
+            pop = torch.einsum("Aii->A", qij)
             print(" ", pop)
 
             print("\n# electrons in TDA: {:.3f}".format(torch.sum(pop)))
@@ -160,7 +205,7 @@ class sTDA:
             print("{:20s}: {:.8f}".format("beta (J)", self.beta))
             print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
 
-        a, b, *metadata = get_ab(
+        a, b, *meta = get_ab(
             mo_energy=self.mo_energy,
             mo_coeff=self.mo_coeff,
             mo_occ=self.mo_occ,
@@ -172,10 +217,39 @@ class sTDA:
             ax=self.ax,
             alpha=self.alpha,
             beta=self.beta,
-            mask_occ=mask_occ,
-            mask_vir=mask_vir,
+            mask_occ=self.mask_occ,
+            mask_vir=self.mask_vir,
             excitation_space="stda",
             e_max=self.e_max,
             tp=self.tp,
             verbose=False,
         )
+
+        self.idx_pcsf, self.idx_scsf, self.idx_ncsf, self.e_pt_ncsf = meta
+
+        if self.verbose:
+            print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
+            print(
+                "{:d} considered in PT2.".format(
+                    len(self.idx_ncsf) + len(self.idx_scsf)
+                )
+            )
+            self.print_ordered_frontier_orbitals()
+
+            print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
+            print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
+
+            print("diagonalizing...")
+
+        self.e, self.x = direct_diagonalization(a, nstates=self.nstates)
+
+        if self.verbose:
+            print(
+                "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
+                    self.e.shape[0],
+                    torch.min(self.e) * AU_TO_EV,
+                    torch.max(self.e) * AU_TO_EV,
+                )
+            )
+
+            print("sTDA done.")
