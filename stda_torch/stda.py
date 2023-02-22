@@ -313,3 +313,5 @@ class sTDA:
 
         if self.verbose:
             print("\nsTDA done.")
+
+        return self.e
