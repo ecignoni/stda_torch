@@ -13,7 +13,166 @@ from .integrals import charge_density_monopole
 import torch
 
 
-class sTDA:
+class sTDAVerboseMixin:
+    def welcome(self):
+        print(datetime.now())
+        print("\n\n   " + "*" * 50)
+        print("   " + "*" + " " * 48 + "*")
+        print("   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*")
+        print("   " + "*" + " " * 48 + "*")
+        print("   " + "*" * 50 + "\n")
+
+    def all_credits_to_grimme(self):
+        print("This is a PyTorch implementation of sTDA.")
+        print("The original sTDA is the work of Stefan Grimme.")
+        print()
+        print("S. Grimme, J. Chem. Phys. 138 (2013) 244104")
+        print("M. de Wergifosse, S. Grimme, J. Phys. Chem A")
+        print("125 (2021) 18 3841-3851\n")
+
+    def stda_section(self):
+        print("=" * 65)
+        print(" " * 28 + "s T D A ")
+        print("=" * 65)
+
+    def mo_ao_input(self):
+        print("=" * 65)
+        print(" " * 22 + "M O / A O   I N P U T ")
+        print("=" * 65)
+        title = "{:3s} {:^15s} {:^15s} {:^15s} {:^10s}".format(
+            "atom #", "x", "y", "z", "charge"
+        )
+        print(title)
+        for symbol, (x, y, z) in zip(self.atom_pure_symbols, self.coords):
+            charge = symbol_to_charge[symbol]
+            row = "%3s %15.8f %15.8f %15.8f %10.1f" % (
+                symbol,
+                x.item(),
+                y.item(),
+                z.item(),
+                charge,
+            )
+            print(row)
+
+        print()
+        print(" {:20s} = {:d}".format("# atoms", self.natm))
+        print(" {:20s} = {:d}".format("# mos", self.mo_coeff.shape[0]))
+        print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
+        print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
+
+    def print_thresholds_info(self):
+        print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
+        print(
+            "{:30s} : {:.8f}".format(
+                "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
+            )
+        )
+        print(
+            "{:30s} : {:.8f}".format(
+                "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
+            )
+        )
+        print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
+        print("{:30s} : {:.8s}".format("triplet", "F"))
+        print(
+            "{:15s}: {:d}".format("MOs in TDA", len(self.mask_occ) + len(self.mask_vir))
+        )
+        print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
+        print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
+
+    def scf_atom_population(self):
+        qij = (
+            charge_density_monopole(
+                ovlp=self.ovlp,
+                natm=self.natm,
+                ao_labels=self.ao_labels,
+                mo_coeff_a=self.mo_coeff[:, self.mask_occ],
+                mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+                mo_orth=self.mo_orth,
+            )
+            * 2  # noqa: W503
+        )
+        pop = torch.einsum("Aii->A", qij)
+        nelec = torch.sum(pop)
+
+        if self.verbose:
+            print("\nSCF atom population (using active MOs):")
+            print(" ", pop)
+            print("\n# electrons in TDA: {:.3f}".format(nelec))
+
+        # raise an exception if the number of electrons is not an integer
+        if abs(nelec - len(self.mask_occ) * 2) > 1e-6:
+            errmsg = "strange number of electrons in sTDA, "
+            errmsg += "perhaps is worth checking the MO coefficients"
+            raise RuntimeError(errmsg)
+
+    def print_parameters_info(self):
+        print("\n{:20s}: {:.8f}".format("ax(DF)", self.ax))
+        print("{:20s}: {:.8f}".format("beta (J)", self.beta))
+        print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
+
+    def print_selection_by_energy(self):
+        print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
+        print("{:d} considered in PT2.".format(len(self.idx_ncsf) + len(self.idx_scsf)))
+
+    def print_selection_by_pt(self):
+        print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
+        print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
+
+    def print_diag_info(self, diag_time):
+        print("estimated time (min)      {:.1f}".format((diag_time) / 60.0))
+        print(
+            "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
+                self.e.shape[0],
+                torch.min(self.e) * physconst.au_to_ev,
+                torch.max(self.e) * physconst.au_to_ev,
+            )
+        )
+
+    def print_ordered_frontier_orbitals(self):
+        print("ordered frontier orbitals")
+        print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
+
+        ene_occ = self.mo_energy[self.mask_occ]
+        qij = charge_density_monopole(
+            ovlp=self.ovlp,
+            natm=self.natm,
+            ao_labels=self.ao_labels,
+            mo_coeff_a=self.mo_coeff[:, self.mask_occ],
+            mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+            mo_orth=self.mo_orth,
+        )
+        qij = torch.einsum("Aii->Ai", qij)
+        centers = 1.0 / torch.einsum("Ai->i", qij**2)
+        for i, (e, c) in enumerate(zip(ene_occ, centers)):
+            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
+            if i == 10:
+                break
+
+        print()
+        nocc = sum(self.mo_occ == 2)
+        ene_vir = self.mo_energy[nocc + self.mask_vir]
+        qab = charge_density_monopole(
+            ovlp=self.ovlp,
+            natm=self.natm,
+            ao_labels=self.ao_labels,
+            mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
+            mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
+            mo_orth=self.mo_orth,
+        )
+        qab = torch.einsum("Auu->Au", qab)
+        centers = 1.0 / torch.einsum("Au->u", qab**2)
+        for i, (e, c) in enumerate(zip(ene_vir, centers)):
+            print(
+                "{:^8d} {:^8.3f} {:.1f}".format(
+                    i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
+                )
+            )
+            if i == 10:
+                break
+
+
+class sTDA(sTDAVerboseMixin):
     "simplified Tamm-Dancoff approximation"
 
     def __init__(
@@ -98,153 +257,26 @@ class sTDA:
             errmsg += "but you provided MO with occupancies different from 2"
             raise ValueError(errmsg)
 
-    def welcome(self):
-        print(datetime.now())
-        print("\n\n   " + "*" * 50)
-        print("   " + "*" + " " * 48 + "*")
-        print("   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*")
-        print("   " + "*" + " " * 48 + "*")
-        print("   " + "*" * 50 + "\n")
-
-    def all_credits_to_grimme(self):
-        print("This is a PyTorch implementation of sTDA.")
-        print("The original sTDA is the work of Stefan Grimme.")
-        print()
-        print("S. Grimme, J. Chem. Phys. 138 (2013) 244104")
-        print("M. de Wergifosse, S. Grimme, J. Phys. Chem A")
-        print("125 (2021) 18 3841-3851\n")
-
-    def mo_ao_input(self):
-        print("=" * 65)
-        print(" " * 22 + "M O / A O   I N P U T ")
-        print("=" * 65)
-        title = "{:3s} {:^15s} {:^15s} {:^15s} {:^10s}".format(
-            "atom #", "x", "y", "z", "charge"
-        )
-        print(title)
-        for symbol, (x, y, z) in zip(self.atom_pure_symbols, self.coords):
-            charge = symbol_to_charge[symbol]
-            row = "%3s %15.8f %15.8f %15.8f %10.1f" % (
-                symbol,
-                x.item(),
-                y.item(),
-                z.item(),
-                charge,
-            )
-            print(row)
-
-        print()
-        print(" {:20s} = {:d}".format("# atoms", self.natm))
-        print(" {:20s} = {:d}".format("# mos", self.mo_coeff.shape[0]))
-        print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
-        print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
-
-    def print_ordered_frontier_orbitals(self):
-        print("ordered frontier orbitals")
-        print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
-
-        ene_occ = self.mo_energy[self.mask_occ]
-        qij = charge_density_monopole(
-            ovlp=self.ovlp,
-            natm=self.natm,
-            ao_labels=self.ao_labels,
-            mo_coeff_a=self.mo_coeff[:, self.mask_occ],
-            mo_coeff_b=self.mo_coeff[:, self.mask_occ],
-            mo_orth=self.mo_orth,
-        )
-        qij = torch.einsum("Aii->Ai", qij)
-        centers = 1.0 / torch.einsum("Ai->i", qij**2)
-        for i, (e, c) in enumerate(zip(ene_occ, centers)):
-            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
-            if i == 10:
-                break
-
-        print()
-        nocc = sum(self.mo_occ == 2)
-        ene_vir = self.mo_energy[nocc + self.mask_vir]
-        qab = charge_density_monopole(
-            ovlp=self.ovlp,
-            natm=self.natm,
-            ao_labels=self.ao_labels,
-            mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
-            mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
-            mo_orth=self.mo_orth,
-        )
-        qab = torch.einsum("Auu->Au", qab)
-        centers = 1.0 / torch.einsum("Au->u", qab**2)
-        for i, (e, c) in enumerate(zip(ene_vir, centers)):
-            print(
-                "{:^8d} {:^8.3f} {:.1f}".format(
-                    i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
-                )
-            )
-            if i == 10:
-                break
-
     def kernel(self, nstates=3):
         self.nstates = nstates
         if self.verbose:
             self.welcome()
             self.all_credits_to_grimme()
             self.mo_ao_input()
-
-            print("=" * 65)
-            print(" " * 28 + "s T D A ")
-            print("=" * 65)
-            print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
+            self.stda_section()
 
         self.mask_occ, self.mask_vir, self.occthr, self.virthr = screen_mo(
             mo_energy=self.mo_energy, mo_occ=self.mo_occ, ax=self.ax, e_max=self.e_max
         )
 
         if self.verbose:
-            print(
-                "{:30s} : {:.8f}".format(
-                    "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
-                )
-            )
-            print(
-                "{:30s} : {:.8f}".format(
-                    "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
-                )
-            )
-            print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
-            print("{:30s} : {:.8s}".format("triplet", "F"))
-            print(
-                "{:15s}: {:d}".format(
-                    "MOs in TDA", len(self.mask_occ) + len(self.mask_vir)
-                )
-            )
-            print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
-            print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
+            self.print_thresholds_info()
 
-            print("\nSCF atom population (using active MOs):")
-            qij = (
-                charge_density_monopole(
-                    ovlp=self.ovlp,
-                    natm=self.natm,
-                    ao_labels=self.ao_labels,
-                    mo_coeff_a=self.mo_coeff[:, self.mask_occ],
-                    mo_coeff_b=self.mo_coeff[:, self.mask_occ],
-                    mo_orth=self.mo_orth,
-                )
-                * 2  # noqa: W503
-            )
-            pop = torch.einsum("Aii->A", qij)
-            print(" ", pop)
+        # check on number of electrons + print if verbose
+        self.scf_atom_population()
 
-            nelec = torch.sum(pop)
-            print("\n# electrons in TDA: {:.3f}".format(nelec))
-            # raise an exception if the number of electrons is not an integer
-            if abs(nelec - len(self.mask_occ) * 2) > 1e-6:
-                errmsg = "strange number of electrons in sTDA, "
-                errmsg += "perhaps is worth checking the MO coefficients"
-                raise RuntimeError(errmsg)
-
-            print("\n")
-            print("{:20s}: {:.8f}".format("ax(DF)", self.ax))
-            print("{:20s}: {:.8f}".format("beta (J)", self.beta))
-            print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
+        if self.verbose:
+            self.print_parameters_info()
 
         a, b, *meta = get_ab(
             mo_energy=self.mo_energy,
@@ -275,16 +307,9 @@ class sTDA:
         self.ncsf = csf_idx_as_ia(self.idx_ncsf, nvir)
 
         if self.verbose:
-            print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
-            print(
-                "{:d} considered in PT2.".format(
-                    len(self.idx_ncsf) + len(self.idx_scsf)
-                )
-            )
+            self.print_selection_by_energy()
             self.print_ordered_frontier_orbitals()
-
-            print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
-            print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
+            self.print_selection_by_pt()
 
             print("diagonalizing...")
 
@@ -293,14 +318,7 @@ class sTDA:
         end = time.perf_counter()
 
         if self.verbose:
-            print("estimated time (min)      {:.1f}".format((end - start) / 60.0))
-            print(
-                "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
-                    self.e.shape[0],
-                    torch.min(self.e) * physconst.au_to_ev,
-                    torch.max(self.e) * physconst.au_to_ev,
-                )
-            )
+            self.print_diag_info(end - start)
 
         # sTDA transition amplitudes
         nocc, nvir = len(self.mask_occ), len(self.mask_vir)
