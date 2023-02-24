@@ -11,6 +11,7 @@ def charge_density_monopole(
     ao_labels: List,
     mo_coeff_a: torch.Tensor,
     mo_coeff_b: torch.Tensor,
+    mo_orth: bool,
 ) -> torch.Tensor:
     """computes the q_pq^A using Löwdin population analysis.
 
@@ -26,12 +27,18 @@ def charge_density_monopole(
                    (atom_index: int, atom: str, ao_name: str, m_def: str)
         mo_coeff_a (n_ao_a, n_mo_a): MO coefficients matrix (C).
         mo_coeff_b (n_ao_b, n_mo_b): MO coefficients matrix (C).
+        mo_orth: whether the MOs are orthonormal. If so, the Löwdin
+                 orthogonalization is skipped
     Returns:
         q (natm, n_mo_a, n_mo_b): charges from Löwdin population analysis.
     """
-    ovlp_i12 = sqrtm(ovlp)
-    coeff_orth_a = torch.matmul(ovlp_i12, mo_coeff_a)
-    coeff_orth_b = torch.matmul(ovlp_i12, mo_coeff_b)
+    if not mo_orth:
+        ovlp_i12 = sqrtm(ovlp)
+        coeff_orth_a = torch.matmul(ovlp_i12, mo_coeff_a)
+        coeff_orth_b = torch.matmul(ovlp_i12, mo_coeff_b)
+    else:
+        coeff_orth_a = mo_coeff_a
+        coeff_orth_b = mo_coeff_b
     nmo_a = coeff_orth_a.shape[1]
     nmo_b = coeff_orth_b.shape[1]
     q = torch.zeros((natm, nmo_a, nmo_b))
@@ -133,6 +140,7 @@ def eri_mo_monopole(
     mode: str = "stda",
     mask_occ: torch.Tensor = None,
     mask_vir: torch.Tensor = None,
+    mo_orth: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """computes the electron repulsion integrals in the sTDA approximation.
 
@@ -164,6 +172,8 @@ def eri_mo_monopole(
                   has index 0.
         mask_vir: indices of virtual MOs to consider. The first virtual MO
                   has index 0.
+        mo_orth: whether the MOs are orthonormal. If so, the Löwdin
+                 orthogonalization is skipped
     Returns:
         eri_J (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Coulomb type.
         eri_K (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): electron repulsion integrals of Exchange type.
@@ -173,7 +183,7 @@ def eri_mo_monopole(
     gam_J = gamma_J(coords, atom_pure_symbols, ax, beta)
     gam_K = gamma_K(coords, atom_pure_symbols, ax, alpha)
     if mode == "full":
-        q = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff, mo_coeff)
+        q = charge_density_monopole(ovlp, natm, ao_labels, mo_coeff, mo_coeff, mo_orth)
         eri_J = torch.einsum("Apq,AB,Brs->pqrs", q, gam_J, q)
         eri_K = torch.einsum("Apq,AB,Brs->pqrs", q, gam_K, q)
     elif mode == "stda":
@@ -185,13 +195,13 @@ def eri_mo_monopole(
             viridx = viridx[mask_vir]
 
         q_oo = charge_density_monopole(
-            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx]
+            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx], mo_orth
         )
         q_ov = charge_density_monopole(
-            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, viridx]
+            ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, viridx], mo_orth
         )
         q_vv = charge_density_monopole(
-            ovlp, natm, ao_labels, mo_coeff[:, viridx], mo_coeff[:, viridx]
+            ovlp, natm, ao_labels, mo_coeff[:, viridx], mo_coeff[:, viridx], mo_orth
         )
         eri_J = torch.einsum("Aij,AB,Bab->iajb", q_oo, gam_J, q_vv)
         eri_K = torch.einsum("Aia,AB,Bjb->iajb", q_ov, gam_K, q_ov)

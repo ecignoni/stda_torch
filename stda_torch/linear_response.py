@@ -26,6 +26,7 @@ def get_ab(
     excitation_space: str = "stda",
     e_max: float = None,
     tp: float = None,
+    mo_orth: bool = False,
     verbose: bool = False,
 ) -> Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
@@ -61,6 +62,8 @@ def get_ab(
                           or the full excitation space ('full')
         e_max: energy threshold of sTDA
         tp: perturbative threshold of sTDA
+        mo_orth: whether the MO are orthonormal. If so, the Löwdin
+                 orthogonalization is skipped
         verbose: whether to be verbose
     Returns:
         A (n_mo_occ, n_mo_vir, n_mo_occ, n_mo_vir): A matrix of the Casida equations.
@@ -96,6 +99,7 @@ def get_ab(
         mode="stda",
         mask_occ=mask_occ,
         mask_vir=mask_vir,
+        mo_orth=mo_orth,
     )
 
     a += eri_K * 2 - eri_J

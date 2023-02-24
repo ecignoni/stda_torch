@@ -31,6 +31,7 @@ class sTDA:
         beta: float = None,
         e_max: float = 7.5,
         tp: float = 1e-4,
+        mo_orth: bool = False,
         verbose: bool = True,
     ) -> None:
         """
@@ -50,6 +51,8 @@ class sTDA:
             beta: parameter β of sTDA (coulomb integral)
             e_max: energy threshold of sTDA
             tp: perturbative threshold of sTDA
+            mo_orth: whether the MO are orthonormal. If so, 'ovlp' is ignored
+                     and Löwdin orthogonalization is skipped
             verbose: whether to be verbose
         """
         self.mo_energy = mo_energy
@@ -67,6 +70,7 @@ class sTDA:
         self.beta = beta
         self.e_max = e_max
         self.tp = tp
+        self.mo_orth = mo_orth
         self.verbose = verbose
 
     @property
@@ -146,6 +150,7 @@ class sTDA:
             ao_labels=self.ao_labels,
             mo_coeff_a=self.mo_coeff[:, self.mask_occ],
             mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+            mo_orth=self.mo_orth,
         )
         qij = torch.einsum("Aii->Ai", qij)
         centers = 1.0 / torch.einsum("Ai->i", qij**2)
@@ -163,6 +168,7 @@ class sTDA:
             ao_labels=self.ao_labels,
             mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
             mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
+            mo_orth=self.mo_orth,
         )
         qab = torch.einsum("Auu->Au", qab)
         centers = 1.0 / torch.einsum("Au->u", qab**2)
@@ -220,6 +226,7 @@ class sTDA:
                     ao_labels=self.ao_labels,
                     mo_coeff_a=self.mo_coeff[:, self.mask_occ],
                     mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+                    mo_orth=self.mo_orth,
                 )
                 * 2  # noqa: W503
             )
@@ -250,6 +257,7 @@ class sTDA:
             excitation_space="stda",
             e_max=self.e_max,
             tp=self.tp,
+            mo_orth=self.mo_orth,
             verbose=False,
         )
 
