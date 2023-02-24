@@ -33,6 +33,25 @@ class sTDA:
         tp: float = 1e-4,
         verbose: bool = True,
     ) -> None:
+        """
+        Args:
+            mo_energy: MO energies ε (AU)
+            mo_coeff: MO coefficients C (not orthonormal)
+            mo_occ: MO occupancies (only double occupancies are supported)
+            ovlp: overlap matrix S
+            natm: number of atoms
+            ao_labels: labels of the cartesian AO (they have to be cartesian)
+                       (atom_index, atom_name, n_symbol, aux_symbol)
+                       (can also provide a 2-tuple, only the first element is used)
+            coords: coordinates in Angstrom
+            atom_pure_symbols: symbols of the atoms ('C' for carbon, 'O' for oxygen, ...)
+            ax: percentage of exact Hartree-Fock exchange
+            alpha: parameter α of sTDA (exchange integral)
+            beta: parameter β of sTDA (coulomb integral)
+            e_max: energy threshold of sTDA
+            tp: perturbative threshold of sTDA
+            verbose: whether to be verbose
+        """
         self.mo_energy = mo_energy
         self.mo_coeff = mo_coeff
         self.mo_occ = mo_occ
