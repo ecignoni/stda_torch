@@ -119,7 +119,6 @@ class sTDA:
     def print_ordered_frontier_orbitals(self):
         print("ordered frontier orbitals")
         print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
-        print(self.mo_energy)
 
         ene_occ = self.mo_energy[self.mask_occ]
         qij = charge_density_monopole(
