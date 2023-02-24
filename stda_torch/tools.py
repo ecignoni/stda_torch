@@ -70,6 +70,8 @@ def gto_molden_section(mol: pyscf.gto.mole.Mole, fout: IO) -> None:
                 write = write.replace("e", "d")
                 fout.write(write)
 
+        fout.write("\n")
+
 
 def reorder_ao_labels(mol: pyscf.gto.mole.Mole) -> np.ndarray:
     "reorders the AO from pyscf to gaussian order"
@@ -183,5 +185,4 @@ def to_stda_molden(
         handle.write("[Molden Format]\n")
         atoms_molden_section(mol, fout=handle)
         gto_molden_section(mol, fout=handle)
-        handle.write("\n")
         mo_molden_section(handle, mo_energy, mo_occ, mo_coeff, mol)

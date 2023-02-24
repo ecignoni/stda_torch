@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Tuple
 import torch
 from .parameters import chemical_hardness, get_alpha_beta
-from .utils import sqrtm
+from .utils import sqrtm, physconst
 
 
 def charge_density_monopole(
@@ -50,7 +50,8 @@ def distance_matrix(coords: torch.Tensor) -> torch.Tensor:
     Returns:
         R : matrix of pairwise distances.
     """
-    R = torch.cdist(coords, coords, p=2.0)
+    xyz = coords * physconst.ang_to_bohr
+    R = torch.cdist(xyz, xyz, p=2.0)
     return R
 
 
@@ -182,6 +183,7 @@ def eri_mo_monopole(
             occidx = occidx[mask_occ]
         if mask_vir is not None:
             viridx = viridx[mask_vir]
+
         q_oo = charge_density_monopole(
             ovlp, natm, ao_labels, mo_coeff[:, occidx], mo_coeff[:, occidx]
         )

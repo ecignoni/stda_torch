@@ -5,8 +5,8 @@ import time
 from datetime import datetime
 
 from .parameters import get_alpha_beta
-from .utils import symbol_to_charge, direct_diagonalization
-from .excitation_space import screen_mo, AU_TO_EV, csf_idx_as_ia
+from .utils import symbol_to_charge, direct_diagonalization, physconst
+from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
 
@@ -131,7 +131,7 @@ class sTDA:
         qij = torch.einsum("Aii->Ai", qij)
         centers = 1.0 / torch.einsum("Ai->i", qij**2)
         for i, (e, c) in enumerate(zip(ene_occ, centers)):
-            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * AU_TO_EV, c))
+            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
             if i == 10:
                 break
 
@@ -150,7 +150,7 @@ class sTDA:
         for i, (e, c) in enumerate(zip(ene_vir, centers)):
             print(
                 "{:^8d} {:^8.3f} {:.1f}".format(
-                    i + len(self.mask_occ) + 1, e * AU_TO_EV, c
+                    i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
                 )
             )
             if i == 10:
@@ -174,10 +174,14 @@ class sTDA:
 
         if self.verbose:
             print(
-                "{:30s} : {:.8f}".format("occ MO cut-off (eV)", self.occthr * AU_TO_EV)
+                "{:30s} : {:.8f}".format(
+                    "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
+                )
             )
             print(
-                "{:30s} : {:.8f}".format("virtMO cut-off (eV)", self.virthr * AU_TO_EV)
+                "{:30s} : {:.8f}".format(
+                    "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
+                )
             )
             print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
             print("{:30s} : {:.8s}".format("triplet", "F"))
@@ -260,8 +264,8 @@ class sTDA:
             print(
                 "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
                     self.e.shape[0],
-                    torch.min(self.e) * AU_TO_EV,
-                    torch.max(self.e) * AU_TO_EV,
+                    torch.min(self.e) * physconst.au_to_ev,
+                    torch.max(self.e) * physconst.au_to_ev,
                 )
             )
 
@@ -295,7 +299,7 @@ class sTDA:
                 print(
                     "{:<5d} {:^8.3f} {:^8.1f} {:^9s} {:^9s} {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d})".format(
                         i + 1,
-                        e * AU_TO_EV,
+                        e * physconst.au_to_ev,
                         1e7 / (e * 2.19474625e5),
                         "n.a.",
                         "n.a.",

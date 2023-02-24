@@ -1,8 +1,7 @@
 from __future__ import annotations
 from typing import Tuple, Union
 import torch
-
-AU_TO_EV = 27.211324570273
+from .utils import physconst
 
 
 def screen_mo(
@@ -47,7 +46,7 @@ def screen_mo(
     occidx = torch.where(mo_occ == 2)[0]
     viridx = torch.where(mo_occ == 0)[0]
 
-    window = 2 * (1.0 + 0.8 * ax) * (e_max / AU_TO_EV)
+    window = 2 * (1.0 + 0.8 * ax) * (e_max / physconst.au_to_ev)
     vthr = torch.max(mo_energy[occidx]) + window
     othr = torch.min(mo_energy[viridx]) - window
 
@@ -56,8 +55,8 @@ def screen_mo(
 
     if verbose:
         print("%-40s = %15.8f" % ("spectral range up to (eV)", e_max))
-        print("%-40s = %15.8f" % ("occ MO cut-off (eV)", othr * AU_TO_EV))
-        print("%-40s = %15.8f" % ("virtMO cut-off (eV)", vthr * AU_TO_EV))
+        print("%-40s = %15.8f" % ("occ MO cut-off (eV)", othr * physconst.au_to_ev))
+        print("%-40s = %15.8f" % ("virtMO cut-off (eV)", vthr * physconst.au_to_ev))
 
     if mesh_idx:
         return (
@@ -91,7 +90,7 @@ def select_csf_by_energy(
         idx_pcsf: indices of P-CSF
         idx_ncsf: indices of N-CSF
     """
-    _e_max = e_max / AU_TO_EV
+    _e_max = e_max / physconst.au_to_ev
     nocc, nvir, _, _ = a.shape
     diag_a = torch.diag(a.reshape(nocc * nvir, nocc * nvir))
 

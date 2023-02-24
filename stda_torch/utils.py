@@ -1,6 +1,12 @@
 from __future__ import annotations
+from collections import namedtuple
 from typing import List, Tuple, Union
 import torch
+
+physconst = namedtuple(
+    "PhysicalConstants",
+    ["au_to_ev", "ang_to_bohr"],
+)(27.211396641308, 1.8897259886)
 
 symbol_to_charge = {
     "  H": 1.0,
