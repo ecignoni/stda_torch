@@ -15,70 +15,77 @@ import torch
 
 class sTDAVerboseMixin:
     def welcome(self):
-        print(datetime.now())
-        print("\n\n   " + "*" * 50)
-        print("   " + "*" + " " * 48 + "*")
-        print("   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*")
-        print("   " + "*" + " " * 48 + "*")
-        print("   " + "*" * 50 + "\n")
+        if self.verbose:
+            print(datetime.now())
+            print("\n\n   " + "*" * 50)
+            print("   " + "*" + " " * 48 + "*")
+            print("   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*")
+            print("   " + "*" + " " * 48 + "*")
+            print("   " + "*" * 50 + "\n")
 
     def all_credits_to_grimme(self):
-        print("This is a PyTorch implementation of sTDA.")
-        print("The original sTDA is the work of Stefan Grimme.")
-        print()
-        print("S. Grimme, J. Chem. Phys. 138 (2013) 244104")
-        print("M. de Wergifosse, S. Grimme, J. Phys. Chem A")
-        print("125 (2021) 18 3841-3851\n")
+        if self.verbose:
+            print("This is a PyTorch implementation of sTDA.")
+            print("The original sTDA is the work of Stefan Grimme.")
+            print()
+            print("S. Grimme, J. Chem. Phys. 138 (2013) 244104")
+            print("M. de Wergifosse, S. Grimme, J. Phys. Chem A")
+            print("125 (2021) 18 3841-3851\n")
 
     def stda_section(self):
-        print("=" * 65)
-        print(" " * 28 + "s T D A ")
-        print("=" * 65)
+        if self.verbose:
+            print("=" * 65)
+            print(" " * 28 + "s T D A ")
+            print("=" * 65)
 
     def mo_ao_input(self):
-        print("=" * 65)
-        print(" " * 22 + "M O / A O   I N P U T ")
-        print("=" * 65)
-        title = "{:3s} {:^15s} {:^15s} {:^15s} {:^10s}".format(
-            "atom #", "x", "y", "z", "charge"
-        )
-        print(title)
-        for symbol, (x, y, z) in zip(self.atom_pure_symbols, self.coords):
-            charge = symbol_to_charge[symbol]
-            row = "%3s %15.8f %15.8f %15.8f %10.1f" % (
-                symbol,
-                x.item(),
-                y.item(),
-                z.item(),
-                charge,
+        if self.verbose:
+            print("=" * 65)
+            print(" " * 22 + "M O / A O   I N P U T ")
+            print("=" * 65)
+            title = "{:3s} {:^15s} {:^15s} {:^15s} {:^10s}".format(
+                "atom #", "x", "y", "z", "charge"
             )
-            print(row)
+            print(title)
+            for symbol, (x, y, z) in zip(self.atom_pure_symbols, self.coords):
+                charge = symbol_to_charge[symbol]
+                row = "%3s %15.8f %15.8f %15.8f %10.1f" % (
+                    symbol,
+                    x.item(),
+                    y.item(),
+                    z.item(),
+                    charge,
+                )
+                print(row)
 
-        print()
-        print(" {:20s} = {:d}".format("# atoms", self.natm))
-        print(" {:20s} = {:d}".format("# mos", self.mo_coeff.shape[0]))
-        print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
-        print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
+            print()
+            print(" {:20s} = {:d}".format("# atoms", self.natm))
+            print(" {:20s} = {:d}".format("# mos", self.mo_coeff.shape[0]))
+            print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
+            print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
 
-    def print_thresholds_info(self):
-        print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
-        print(
-            "{:30s} : {:.8f}".format(
-                "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
+    def thresholds_info(self):
+        if self.verbose:
+            print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
+            print(
+                "{:30s} : {:.8f}".format(
+                    "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
+                )
             )
-        )
-        print(
-            "{:30s} : {:.8f}".format(
-                "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
+            print(
+                "{:30s} : {:.8f}".format(
+                    "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
+                )
             )
-        )
-        print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
-        print("{:30s} : {:.8s}".format("triplet", "F"))
-        print(
-            "{:15s}: {:d}".format("MOs in TDA", len(self.mask_occ) + len(self.mask_vir))
-        )
-        print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
-        print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
+            print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
+            print("{:30s} : {:.8s}".format("triplet", "F"))
+            print(
+                "{:15s}: {:d}".format(
+                    "MOs in TDA", len(self.mask_occ) + len(self.mask_vir)
+                )
+            )
+            print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
+            print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
 
     def scf_atom_population(self):
         qij = (
@@ -106,70 +113,115 @@ class sTDAVerboseMixin:
             errmsg += "perhaps is worth checking the MO coefficients"
             raise RuntimeError(errmsg)
 
-    def print_parameters_info(self):
-        print("\n{:20s}: {:.8f}".format("ax(DF)", self.ax))
-        print("{:20s}: {:.8f}".format("beta (J)", self.beta))
-        print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
+    def parameters_info(self):
+        if self.verbose:
+            print("\n{:20s}: {:.8f}".format("ax(DF)", self.ax))
+            print("{:20s}: {:.8f}".format("beta (J)", self.beta))
+            print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
 
-    def print_selection_by_energy(self):
-        print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
-        print("{:d} considered in PT2.".format(len(self.idx_ncsf) + len(self.idx_scsf)))
-
-    def print_selection_by_pt(self):
-        print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
-        print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
-
-    def print_diag_info(self, diag_time):
-        print("estimated time (min)      {:.1f}".format((diag_time) / 60.0))
-        print(
-            "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
-                self.e.shape[0],
-                torch.min(self.e) * physconst.au_to_ev,
-                torch.max(self.e) * physconst.au_to_ev,
-            )
-        )
-
-    def print_ordered_frontier_orbitals(self):
-        print("ordered frontier orbitals")
-        print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
-
-        ene_occ = self.mo_energy[self.mask_occ]
-        qij = charge_density_monopole(
-            ovlp=self.ovlp,
-            natm=self.natm,
-            ao_labels=self.ao_labels,
-            mo_coeff_a=self.mo_coeff[:, self.mask_occ],
-            mo_coeff_b=self.mo_coeff[:, self.mask_occ],
-            mo_orth=self.mo_orth,
-        )
-        qij = torch.einsum("Aii->Ai", qij)
-        centers = 1.0 / torch.einsum("Ai->i", qij**2)
-        for i, (e, c) in enumerate(zip(ene_occ, centers)):
-            print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
-            if i == 10:
-                break
-
-        print()
-        nocc = sum(self.mo_occ == 2)
-        ene_vir = self.mo_energy[nocc + self.mask_vir]
-        qab = charge_density_monopole(
-            ovlp=self.ovlp,
-            natm=self.natm,
-            ao_labels=self.ao_labels,
-            mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
-            mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
-            mo_orth=self.mo_orth,
-        )
-        qab = torch.einsum("Auu->Au", qab)
-        centers = 1.0 / torch.einsum("Au->u", qab**2)
-        for i, (e, c) in enumerate(zip(ene_vir, centers)):
+    def selection_by_energy(self):
+        if self.verbose:
+            print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
             print(
-                "{:^8d} {:^8.3f} {:.1f}".format(
-                    i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
+                "{:d} considered in PT2.".format(
+                    len(self.idx_ncsf) + len(self.idx_scsf)
                 )
             )
-            if i == 10:
-                break
+
+    def selection_by_pt(self):
+        if self.verbose:
+            print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
+            print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
+
+    def diag_info(self, diag_time):
+        if self.verbose:
+            print("estimated time (min)      {:.1f}".format((diag_time) / 60.0))
+            print(
+                "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
+                    self.e.shape[0],
+                    torch.min(self.e) * physconst.au_to_ev,
+                    torch.max(self.e) * physconst.au_to_ev,
+                )
+            )
+
+    def ordered_frontier_orbitals(self):
+        if self.verbose:
+            print("ordered frontier orbitals")
+            print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
+
+            ene_occ = self.mo_energy[self.mask_occ]
+            qij = charge_density_monopole(
+                ovlp=self.ovlp,
+                natm=self.natm,
+                ao_labels=self.ao_labels,
+                mo_coeff_a=self.mo_coeff[:, self.mask_occ],
+                mo_coeff_b=self.mo_coeff[:, self.mask_occ],
+                mo_orth=self.mo_orth,
+            )
+            qij = torch.einsum("Aii->Ai", qij)
+            centers = 1.0 / torch.einsum("Ai->i", qij**2)
+            for i, (e, c) in enumerate(zip(ene_occ, centers)):
+                print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
+                if i == 10:
+                    break
+
+            print()
+            nocc = sum(self.mo_occ == 2)
+            ene_vir = self.mo_energy[nocc + self.mask_vir]
+            qab = charge_density_monopole(
+                ovlp=self.ovlp,
+                natm=self.natm,
+                ao_labels=self.ao_labels,
+                mo_coeff_a=self.mo_coeff[:, nocc + self.mask_vir],
+                mo_coeff_b=self.mo_coeff[:, nocc + self.mask_vir],
+                mo_orth=self.mo_orth,
+            )
+            qab = torch.einsum("Auu->Au", qab)
+            centers = 1.0 / torch.einsum("Au->u", qab**2)
+            for i, (e, c) in enumerate(zip(ene_vir, centers)):
+                print(
+                    "{:^8d} {:^8.3f} {:.1f}".format(
+                        i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
+                    )
+                )
+                if i == 10:
+                    break
+
+    def excens_and_amplitudes(self):
+        if self.verbose:
+            occ_idx = torch.arange(self.nocc)
+            vir_idx = torch.arange(self.nvir)
+            indices = torch.LongTensor(
+                [[o, self.nocc + v] for o in occ_idx for v in vir_idx]
+            )
+            print("\nexcitation energies, transition moments and TDA amplitudes")
+            print("state    eV      nm       fL        Rv(corr)")
+            for i, (e, x) in enumerate(zip(self.e, self.x)):
+                _, top3indices = torch.topk(abs(x.reshape(-1)), 3)
+                top3_ia_pairs = indices[top3indices]
+                top3values = x.reshape(-1)[top3indices]
+                print(
+                    "{:<5d} {:^8.3f} {:^8.1f} {:^9s} {:^9s} {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d})".format(
+                        i + 1,
+                        e * physconst.au_to_ev,
+                        1e7 / (e * 2.19474625e5),
+                        "n.a.",
+                        "n.a.",
+                        top3values[0],
+                        top3_ia_pairs[0][0] + 1,
+                        top3_ia_pairs[0][1] + 1,
+                        top3values[1],
+                        top3_ia_pairs[1][0] + 1,
+                        top3_ia_pairs[1][1] + 1,
+                        top3values[2],
+                        top3_ia_pairs[2][0] + 1,
+                        top3_ia_pairs[2][1] + 1,
+                    )
+                )
+
+    def stda_done(self):
+        if self.verbose:
+            print("\nsTDA done.")
 
 
 class sTDA(sTDAVerboseMixin):
@@ -259,24 +311,22 @@ class sTDA(sTDAVerboseMixin):
 
     def kernel(self, nstates=3):
         self.nstates = nstates
-        if self.verbose:
-            self.welcome()
-            self.all_credits_to_grimme()
-            self.mo_ao_input()
-            self.stda_section()
+
+        self.welcome()
+        self.all_credits_to_grimme()
+        self.mo_ao_input()
+        self.stda_section()
 
         self.mask_occ, self.mask_vir, self.occthr, self.virthr = screen_mo(
             mo_energy=self.mo_energy, mo_occ=self.mo_occ, ax=self.ax, e_max=self.e_max
         )
 
-        if self.verbose:
-            self.print_thresholds_info()
+        self.thresholds_info()
 
         # check on number of electrons + print if verbose
         self.scf_atom_population()
 
-        if self.verbose:
-            self.print_parameters_info()
+        self.parameters_info()
 
         a, b, *meta = get_ab(
             mo_energy=self.mo_energy,
@@ -306,67 +356,36 @@ class sTDA(sTDAVerboseMixin):
         self.scsf = csf_idx_as_ia(self.idx_scsf, nvir)
         self.ncsf = csf_idx_as_ia(self.idx_ncsf, nvir)
 
-        if self.verbose:
-            self.print_selection_by_energy()
-            self.print_ordered_frontier_orbitals()
-            self.print_selection_by_pt()
+        self.selection_by_energy()
+        self.ordered_frontier_orbitals()
+        self.selection_by_pt()
 
+        if self.verbose:
             print("diagonalizing...")
 
         start = time.perf_counter()
         self.e, x = direct_diagonalization(a, nstates=self.nstates)
         end = time.perf_counter()
 
-        if self.verbose:
-            self.print_diag_info(end - start)
+        self.diag_info(end - start)
 
         # sTDA transition amplitudes
-        nocc, nvir = len(self.mask_occ), len(self.mask_vir)
+        self.nocc, self.nvir = len(self.mask_occ), len(self.mask_vir)
         xy = [(xi, 0.0) for xi in x.T]
         active = torch.concatenate((self.pcsf, self.scsf))
         self.x = []
         self.y = []
         for x, y in xy:
-            new_x = torch.zeros((nocc, nvir))
-            new_y = torch.zeros((nocc, nvir))
+            new_x = torch.zeros((self.nocc, self.nvir))
+            new_y = torch.zeros((self.nocc, self.nvir))
             new_x[active[:, 0], active[:, 1]] = x
             self.x.append(new_x)
             self.y.append(new_y)
         self.x = torch.stack(self.x)
         self.y = torch.stack(self.y)
 
-        if self.verbose:
-            occ_idx = torch.arange(nocc)
-            vir_idx = torch.arange(nvir)
-            indices = torch.LongTensor(
-                [[o, nocc + v] for o in occ_idx for v in vir_idx]
-            )
-            print("\nexcitation energies, transition moments and TDA amplitudes")
-            print("state    eV      nm       fL        Rv(corr)")
-            for i, (e, x) in enumerate(zip(self.e, self.x)):
-                _, top3indices = torch.topk(abs(x.reshape(-1)), 3)
-                top3_ia_pairs = indices[top3indices]
-                top3values = x.reshape(-1)[top3indices]
-                print(
-                    "{:<5d} {:^8.3f} {:^8.1f} {:^9s} {:^9s} {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d}) {:6.2f}({:4d}->{:4d})".format(
-                        i + 1,
-                        e * physconst.au_to_ev,
-                        1e7 / (e * 2.19474625e5),
-                        "n.a.",
-                        "n.a.",
-                        top3values[0],
-                        top3_ia_pairs[0][0] + 1,
-                        top3_ia_pairs[0][1] + 1,
-                        top3values[1],
-                        top3_ia_pairs[1][0] + 1,
-                        top3_ia_pairs[1][1] + 1,
-                        top3values[2],
-                        top3_ia_pairs[2][0] + 1,
-                        top3_ia_pairs[2][1] + 1,
-                    )
-                )
+        self.excens_and_amplitudes()
 
-        if self.verbose:
-            print("\nsTDA done.")
+        self.stda_done()
 
         return self.e
