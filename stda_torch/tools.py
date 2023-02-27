@@ -73,9 +73,40 @@ def gto_molden_section(mol: pyscf.gto.mole.Mole, fout: IO) -> None:
         fout.write("\n")
 
 
+def patch_ao_labels(ao_labels, mol):
+    # super ugly patch for a stupid ugly problem, as
+    # each basis seem to have a different convention for
+    # how it is printed.....
+    sym2num = {"s": "a", "p": "b", "d": "c"}
+    if mol.basis == "def2svp":
+        # pyscf calls the def2SVP AOs like this:
+        # 1s, 2s, 2px, 2py, 2pz, 3s, 3px, 3py, 3pz, 3dxx, ...
+        # while gaussian and the like call them like this:
+        # 1s, 2s, 3s, 4px, 4py, 4pz, 5px, 5py, 5pz, 6xx, ...
+        # no comment.
+        # here I try to fix the order...
+        ao_labels = np.array(ao_labels)
+        atom_idx = np.unique(ao_labels[:, 0])
+        new_ao_labels = []
+        for atom_id in atom_idx:
+            mask = ao_labels[:, 0] == atom_id
+            masked_ao_labels = ao_labels[mask]
+            nl_list = np.unique([lbl[2] for lbl in masked_ao_labels])
+            mapped = np.array([sym2num[lbl[1]] + lbl[0] for lbl in nl_list])
+            sorted_mapped = np.asarray(sorted(mapped))
+            idx = np.concatenate([np.where(sorted_mapped == mp)[0] for mp in mapped])
+            nl_dict = {nl: str(i + 1) + nl[1] for nl, i in zip(nl_list, idx)}
+            new_ao_labels.append(
+                [(i, sym, nl_dict[nl], u) for i, sym, nl, u in masked_ao_labels]
+            )
+        ao_labels = [item for sublist in new_ao_labels for item in sublist]
+    return ao_labels
+
+
 def reorder_ao_labels(mol: pyscf.gto.mole.Mole) -> np.ndarray:
     "reorders the AO from pyscf to gaussian order"
     ao_labels = mol.ao_labels(fmt=None)
+    ao_labels = patch_ao_labels(ao_labels, mol)
 
     indices = []
     i = 0
