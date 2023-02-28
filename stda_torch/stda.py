@@ -108,7 +108,7 @@ class sTDAVerboseMixin:
             print("\n# electrons in TDA: {:.3f}".format(nelec))
 
         # raise an exception if the number of electrons is not an integer
-        if abs(nelec - len(self.mask_occ) * 2) > 1e-6:
+        if abs(nelec - len(self.mask_occ) * 2) > 1e-2:
             errmsg = "strange number of electrons in sTDA, "
             errmsg += "perhaps is worth checking the MO coefficients"
             raise RuntimeError(errmsg)

@@ -109,12 +109,14 @@ symbol_to_charge = {k.strip(): v for k, v in symbol_to_charge.items()}
 
 def isqrtm(A: torch.Tensor) -> torch.Tensor:
     eva, eve = torch.linalg.eigh(A)
-    return eve @ torch.diag(eva ** (-0.5)) @ eve.T
+    idx = eva > 1e-15
+    return eve[:, idx] @ torch.diag(eva[idx] ** (-0.5)) @ eve[:, idx].T
 
 
 def sqrtm(A: torch.Tensor) -> torch.Tensor:
     eva, eve = torch.linalg.eigh(A)
-    return eve @ torch.diag(eva**0.5) @ eve.T
+    idx = eva > 1e-15
+    return eve[:, idx] @ torch.diag(eva[idx] ** 0.5) @ eve[:, idx].T
 
 
 def direct_diagonalization(
@@ -149,3 +151,27 @@ def mulliken_population(
     for i, (atidx, *_) in enumerate(ao_labels):
         q[atidx] += pop[i]
     return q, pop
+
+
+def normalize_ao(
+    mo_coeff: torch.Tensor,
+    ovlp: torch.Tensor,
+) -> Union[torch.Tensor, torch.Tensor]:
+    """normalizes the AO basis
+
+    Normalizes the atomic orbital basis, modifying
+    the overlap matrix S and the MO coefficients C.
+    Rows and columns of S are divided by diag(S)^½,
+    while rows of C are multiplied by diag(S)^½
+
+    Args:
+        mo_coeff: MO coefficients (C matrix)
+        ovlp: overlap (S matrix)
+    Returns:
+        mo_coeff: normalized MO coefficients
+        ovlp: normalized overlap
+    """
+    norm = torch.diag(ovlp) ** 0.5
+    ovlp = torch.einsum("i,ij,j->ij", 1.0 / norm, ovlp, 1.0 / norm)
+    mo_coeff = torch.einsum("i,ij->ij", norm, mo_coeff)
+    return mo_coeff, ovlp
