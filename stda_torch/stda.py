@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple
 
+import sys
 import warnings
 import time
 from datetime import datetime
@@ -17,37 +18,41 @@ import torch
 class sTDAVerboseMixin:
     def welcome(self):
         if self.verbose:
-            print(datetime.now())
-            print("\n\n   " + "*" * 50)
-            print("   " + "*" + " " * 48 + "*")
-            print("   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*")
-            print("   " + "*" + " " * 48 + "*")
-            print("   " + "*" * 50 + "\n")
+            print(datetime.now(), file=self.logstream)
+            msg = "\n\n   " + "*" * 50 + "\n"
+            msg += "   " + "*" + " " * 48 + "*" + "\n"
+            msg += "   " + "*" + " " * 20 + "s T D A " + " " * 20 + "*" + "\n"
+            msg += "   " + "*" + " " * 48 + "*" + "\n"
+            msg += "   " + "*" * 50 + "\n"
+            print(msg, file=self.logstream)
 
     def all_credits_to_grimme(self):
         if self.verbose:
-            print("This is a PyTorch implementation of sTDA.")
-            print("The original sTDA is the work of Stefan Grimme.")
-            print()
-            print("S. Grimme, J. Chem. Phys. 138 (2013) 244104")
-            print("M. de Wergifosse, S. Grimme, J. Phys. Chem A")
-            print("125 (2021) 18 3841-3851\n")
+            msg = "This is a PyTorch implementation of sTDA.\n"
+            msg += "The original sTDA is the work of Stefan Grimme.\n\n"
+            msg += "S. Grimme, J. Chem. Phys. 138 (2013) 244104\n"
+            msg += "M. de Wergifosse, S. Grimme, J. Phys. Chem A\n"
+            msg += "125 (2021) 18 3841-3851\n"
+            print(msg, file=self.logstream)
 
     def stda_section(self):
         if self.verbose:
-            print("=" * 65)
-            print(" " * 28 + "s T D A ")
-            print("=" * 65)
+            msg = "=" * 65 + "\n"
+            msg += " " * 28 + "s T D A \n"
+            msg += "=" * 65
+            print(msg, file=self.logstream)
 
     def mo_ao_input(self):
         if self.verbose:
-            print("=" * 65)
-            print(" " * 22 + "M O / A O   I N P U T ")
-            print("=" * 65)
+            msg = "=" * 65 + "\n"
+            msg += " " * 22 + "M O / A O   I N P U T \n"
+            msg += "=" * 65 + "\n"
+            print(msg, file=self.logstream)
             title = "{:3s} {:^15s} {:^15s} {:^15s} {:^10s}".format(
                 "atom #", "x", "y", "z", "charge"
             )
-            print(title)
+            print(title, file=self.logstream)
+
             for symbol, (x, y, z) in zip(self.atom_pure_symbols, self.coords):
                 charge = symbol_to_charge[symbol]
                 row = "%3s %15.8f %15.8f %15.8f %10.1f" % (
@@ -57,36 +62,31 @@ class sTDAVerboseMixin:
                     z.item(),
                     charge,
                 )
-                print(row)
+                print(row, file=self.logstream)
 
-            print()
-            print(" {:20s} = {:d}".format("# atoms", self.natm))
-            print(" {:20s} = {:d}".format("# mos", self.mo_coeff.shape[0]))
-            print(" {:20s} = {:s}".format("# primitive aos", "not provided"))
-            print(" {:20s} = {:d}".format("# contracted aos", len(self.ao_labels)))
+            msg = "\n {:20s} = {:d}\n".format("# atoms", self.natm)
+            msg += " {:20s} = {:d}\n".format("# mos", self.mo_coeff.shape[0])
+            msg += " {:20s} = {:s}\n".format("# primitive aos", "not provided")
+            msg += " {:20s} = {:d}\n".format("# contracted aos", len(self.ao_labels))
+            print(msg, file=self.logstream)
 
     def thresholds_info(self):
         if self.verbose:
-            print("{:30s} : {:.8f}".format("spectral range up to (eV)", self.e_max))
-            print(
-                "{:30s} : {:.8f}".format(
-                    "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
-                )
+            msg = "{:30s} : {:.8f}\n".format("spectral range up to (eV)", self.e_max)
+            msg += "{:30s} : {:.8f}\n".format(
+                "occ MO cut-off (eV)", self.occthr * physconst.au_to_ev
             )
-            print(
-                "{:30s} : {:.8f}".format(
-                    "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
-                )
+            msg += "{:30s} : {:.8f}\n".format(
+                "virtMO cut-off (eV)", self.virthr * physconst.au_to_ev
             )
-            print("{:30s} : {:.8f}".format("perturbation thr", self.tp))
-            print("{:30s} : {:.8s}".format("triplet", "F"))
-            print(
-                "{:15s}: {:d}".format(
-                    "MOs in TDA", len(self.mask_occ) + len(self.mask_vir)
-                )
+            msg += "{:30s} : {:.8f}\n".format("perturbation thr", self.tp)
+            msg += "{:30s} : {:.8s}\n".format("triplet", "F")
+            msg += "{:15s}: {:d}\n".format(
+                "MOs in TDA", len(self.mask_occ) + len(self.mask_vir)
             )
-            print("{:15s}: {:d}".format("oMOs in TDA", len(self.mask_occ)))
-            print("{:15s}: {:d}".format("vMOs in TDA", len(self.mask_vir)))
+            msg += "{:15s}: {:d}\n".format("oMOs in TDA", len(self.mask_occ))
+            msg += "{:15s}: {:d}\n".format("vMOs in TDA", len(self.mask_vir))
+            print(msg, file=self.logstream)
 
     def scf_atom_population(self):
         qij = (
@@ -104,9 +104,9 @@ class sTDAVerboseMixin:
         nelec = torch.sum(pop)
 
         if self.verbose:
-            print("\nSCF atom population (using active MOs):")
-            print(" ", pop)
-            print("\n# electrons in TDA: {:.3f}".format(nelec))
+            print("\nSCF atom population (using active MOs):", file=self.logstream)
+            print(" ", pop, file=self.logstream)
+            print("\n# electrons in TDA: {:.3f}\n".format(nelec), file=self.logstream)
 
         # raise an exception if the number of electrons is not an integer
         if abs(nelec - len(self.mask_occ) * 2) > 1e-2:
@@ -116,39 +116,44 @@ class sTDAVerboseMixin:
 
     def parameters_info(self):
         if self.verbose:
-            print("\n{:20s}: {:.8f}".format("ax(DF)", self.ax))
-            print("{:20s}: {:.8f}".format("beta (J)", self.beta))
-            print("{:20s}: {:.8f}".format("alpha (K)", self.alpha))
+            msg = "\n{:20s}: {:.8f}\n".format("ax(DF)", self.ax)
+            msg += "{:20s}: {:.8f}\n".format("beta (J)", self.beta)
+            msg += "{:20s}: {:.8f}'n".format("alpha (K)", self.alpha)
+            print(msg, file=self.logstream)
 
     def selection_by_energy(self):
         if self.verbose:
-            print("\n{:d} CSF included by energy.".format(len(self.idx_pcsf)))
-            print(
-                "{:d} considered in PT2.".format(
-                    len(self.idx_ncsf) + len(self.idx_scsf)
-                )
+            msg = "\n{:d} CSF included by energy.\n".format(len(self.idx_pcsf))
+            msg += "{:d} considered in PT2.\n".format(
+                len(self.idx_ncsf) + len(self.idx_scsf)
             )
+            print(msg, file=self.logstream)
 
     def selection_by_pt(self):
         if self.verbose:
-            print("\n{:d} CSF included by PT.".format(len(self.idx_scsf)))
-            print("{:d} CSF in total.".format(len(self.idx_pcsf) + len(self.idx_scsf)))
+            msg = "\n{:d} CSF included by PT.\n".format(len(self.idx_scsf))
+            msg += "{:d} CSF in total.\n".format(
+                len(self.idx_pcsf) + len(self.idx_scsf)
+            )
+            print(msg, file=self.logstream)
 
     def diag_info(self, diag_time):
         if self.verbose:
-            print("estimated time (min)      {:.1f}".format((diag_time) / 60.0))
-            print(
-                "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}".format(
+            msg = "estimated time (min)      {:.1f}\n".format((diag_time) / 60.0)
+            msg += (
+                "\t{:d} roots found, lowest/highest eigenvalue: {:.3f} {:.3f}\n".format(
                     self.e.shape[0],
                     torch.min(self.e) * physconst.au_to_ev,
                     torch.max(self.e) * physconst.au_to_ev,
                 )
             )
+            print(msg, file=self.logstream)
 
     def ordered_frontier_orbitals(self):
         if self.verbose:
-            print("ordered frontier orbitals")
-            print("{:8s} {:8s} {:8s}".format("", "eV", "# centers"))
+            msg = "ordered frontier orbitals\n"
+            msg += "{:8s} {:8s} {:8s}\n".format("", "eV", "# centers")
+            print(msg, file=self.logstream)
 
             ene_occ = self.mo_energy[self.mask_occ]
             qij = charge_density_monopole(
@@ -162,11 +167,14 @@ class sTDAVerboseMixin:
             qij = torch.einsum("Aii->Ai", qij)
             centers = 1.0 / torch.einsum("Ai->i", qij**2)
             for i, (e, c) in enumerate(zip(ene_occ, centers)):
-                print("{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c))
+                print(
+                    "{:^8d} {:^8.3f} {:.1f}".format(i + 1, e * physconst.au_to_ev, c),
+                    file=self.logstream,
+                )
                 if i == 10:
                     break
 
-            print()
+            print("", file=self.logstream)
             nocc = sum(self.mo_occ == 2)
             ene_vir = self.mo_energy[nocc + self.mask_vir]
             qab = charge_density_monopole(
@@ -183,7 +191,8 @@ class sTDAVerboseMixin:
                 print(
                     "{:^8d} {:^8.3f} {:.1f}".format(
                         i + len(self.mask_occ) + 1, e * physconst.au_to_ev, c
-                    )
+                    ),
+                    file=self.logstream,
                 )
                 if i == 10:
                     break
@@ -195,8 +204,11 @@ class sTDAVerboseMixin:
             indices = torch.LongTensor(
                 [[o, self.nocc + v] for o in occ_idx for v in vir_idx]
             )
-            print("\nexcitation energies, transition moments and TDA amplitudes")
-            print("state    eV      nm       fL        Rv(corr)")
+            print(
+                "\nexcitation energies, transition moments and TDA amplitudes",
+                file=self.logstream,
+            )
+            print("state    eV      nm       fL        Rv(corr)", file=self.logstream)
             for i, (e, x) in enumerate(zip(self.e, self.x)):
                 _, top3indices = torch.topk(abs(x.reshape(-1)), 3)
                 top3_ia_pairs = indices[top3indices]
@@ -217,7 +229,8 @@ class sTDAVerboseMixin:
                         top3values[2],
                         top3_ia_pairs[2][0] + 1,
                         top3_ia_pairs[2][1] + 1,
-                    )
+                    ),
+                    file=self.logstream,
                 )
 
     def normalize_ao_basis(self):
@@ -239,12 +252,12 @@ class sTDAVerboseMixin:
 
     def diagonalize(self, a):
         if self.verbose:
-            print("diagonalizing...")
+            print("diagonalizing...", file=self.logstream)
         return direct_diagonalization(a, nstates=self.nstates)
 
     def stda_done(self):
         if self.verbose:
-            print("\nsTDA done.")
+            print("\nsTDA done.", file=self.logstream)
 
 
 class sTDA(sTDAVerboseMixin):
@@ -267,6 +280,7 @@ class sTDA(sTDAVerboseMixin):
         tp: float = 1e-4,
         mo_orth: bool = False,
         verbose: bool = True,
+        logfile: str = None,
     ) -> None:
         """
         Args:
@@ -306,6 +320,7 @@ class sTDA(sTDAVerboseMixin):
         self.tp = tp
         self.mo_orth = mo_orth
         self.verbose = verbose
+        self.logfile = logfile
 
     @property
     def alpha(self):
@@ -333,6 +348,12 @@ class sTDA(sTDAVerboseMixin):
             raise ValueError(errmsg)
 
     def kernel(self, nstates=3):
+        # the sTDA mixin uses prints its output to self.logstream
+        if self.logfile is not None:
+            self.logstream = open(self.logfile, "w")
+        else:
+            self.logstream = sys.stdout
+
         self.nstates = nstates
 
         self.welcome()
@@ -411,5 +432,8 @@ class sTDA(sTDAVerboseMixin):
         self.excens_and_amplitudes()
 
         self.stda_done()
+
+        if self.logfile is not None:
+            self.logstream.close()
 
         return self.e
