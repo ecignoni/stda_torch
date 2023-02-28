@@ -118,7 +118,7 @@ class sTDAVerboseMixin:
         if self.verbose:
             msg = "\n{:20s}: {:.8f}\n".format("ax(DF)", self.ax)
             msg += "{:20s}: {:.8f}\n".format("beta (J)", self.beta)
-            msg += "{:20s}: {:.8f}'n".format("alpha (K)", self.alpha)
+            msg += "{:20s}: {:.8f}\n".format("alpha (K)", self.alpha)
             print(msg, file=self.logstream)
 
     def selection_by_energy(self):
