@@ -237,6 +237,11 @@ class sTDAVerboseMixin:
             errmsg += "make sure they are computed in a normalized AO basis.\n"
             warnings.warn(errmsg)
 
+    def diagonalize(self, a):
+        if self.verbose:
+            print("diagonalizing...")
+        return direct_diagonalization(a, nstates=self.nstates)
+
     def stda_done(self):
         if self.verbose:
             print("\nsTDA done.")
@@ -382,11 +387,8 @@ class sTDA(sTDAVerboseMixin):
         self.ordered_frontier_orbitals()
         self.selection_by_pt()
 
-        if self.verbose:
-            print("diagonalizing...")
-
         start = time.perf_counter()
-        self.e, x = direct_diagonalization(a, nstates=self.nstates)
+        self.e, x = self.diagonalize(a)
         end = time.perf_counter()
 
         self.diag_info(end - start)
