@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import List, Tuple
 
+import warnings
 import time
 from datetime import datetime
 
 from .parameters import get_alpha_beta
-from .utils import symbol_to_charge, direct_diagonalization, physconst
+from .utils import symbol_to_charge, direct_diagonalization, physconst, normalize_ao
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
@@ -219,6 +220,23 @@ class sTDAVerboseMixin:
                     )
                 )
 
+    def normalize_ao_basis(self):
+        if not self.mo_orth:
+            # if the MO coefficients need to be orthonormalized
+            # we assume the 'ovlp' given in input is a valid one
+            self.mo_coeff, self.ovlp = normalize_ao(
+                mo_coeff=self.mo_coeff, ovlp=self.ovlp
+            )
+        else:
+            # if the MO are orthonormalized, then 'ovlp' is ignored
+            # and everything (e.g., None) can be passed as input
+            # in this case print a warning as the user must be free
+            # to avoid computing the overlap (e.g., if the mo coeffs
+            # are the output of a ML model)
+            errmsg = "\nWarning: you are passing Lowdin orthogonalized MOs, "
+            errmsg += "make sure they are computed in a normalized AO basis.\n"
+            warnings.warn(errmsg)
+
     def stda_done(self):
         if self.verbose:
             print("\nsTDA done.")
@@ -316,6 +334,10 @@ class sTDA(sTDAVerboseMixin):
         self.all_credits_to_grimme()
         self.mo_ao_input()
         self.stda_section()
+
+        # pyscf cartesian basis is not normalized
+        # in general, make sure you are using a normalized basis
+        self.normalize_ao_basis()
 
         self.mask_occ, self.mask_vir, self.occthr, self.virthr = screen_mo(
             mo_energy=self.mo_energy, mo_occ=self.mo_occ, ax=self.ax, e_max=self.e_max
