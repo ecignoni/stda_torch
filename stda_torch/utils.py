@@ -1,7 +1,9 @@
 from __future__ import annotations
-from collections import namedtuple
 from typing import List, Tuple, Union
+
+from collections import namedtuple
 import torch
+from .stda import sTDA
 
 physconst = namedtuple(
     "PhysicalConstants",
@@ -175,3 +177,45 @@ def normalize_ao(
     ovlp = torch.einsum("i,ij,j->ij", 1.0 / norm, ovlp, 1.0 / norm)
     mo_coeff = torch.einsum("i,ij->ij", norm, mo_coeff)
     return mo_coeff, ovlp
+
+
+def excitation_composition(
+    stda: sTDA,
+    idx: int,
+    topk: int = 3,
+    original_numbering: bool = True,
+    verbose: bool = True,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    if original_numbering:
+        # number the MOs according to their original label (i.e., as if the excitation
+        # space is not truncated)
+        indices = torch.LongTensor(
+            [
+                [o, v]
+                for o in stda.mask_occ
+                for v in stda.mask_vir + stda.mask_occ[-1] + 1
+            ],
+        )
+    else:
+        # number the MOs according to their "sTDA" label (i.e., the same number that
+        # is printed when calling `kernel` on the sTDA object)
+        indices = torch.LongTensor(
+            [
+                [o, stda.nocc + v]
+                for o in torch.arange(stda.nocc)
+                for v in torch.arange(stda.nvir)
+            ]
+        )
+
+    x = stda.x[idx].clone() ** 2
+
+    if abs(torch.sum(x) - 1.0) > 1e-6:
+        raise ValueError("Something is wrong with transition amplitudes matrix")
+
+    topk_values, topk_indices = torch.topk(x.reshape(-1), k=topk)
+    topk_pairs = indices[topk_indices]
+
+    for value, pair in zip(topk_values, topk_pairs):
+        print(f"{value.item()*100:6.2f} % for MO({pair[0]:4d}) -> MO({pair[1]:4d})")
+
+    return topk_values, topk_pairs
