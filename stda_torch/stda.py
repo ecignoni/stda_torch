@@ -7,7 +7,13 @@ import time
 from datetime import datetime
 
 from .parameters import get_alpha_beta
-from .utils import symbol_to_charge, direct_diagonalization, physconst, normalize_ao
+from .utils import (
+    symbol_to_charge,
+    direct_diagonalization,
+    physconst,
+    normalize_ao,
+    excitation_composition,
+)
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
@@ -437,3 +443,18 @@ class sTDA(sTDAVerboseMixin):
             self.logstream.close()
 
         return self.e
+
+    def excitation_composition(
+        self,
+        idx: int,
+        topk: int = 3,
+        original_numbering: bool = True,
+        verbose: bool = True,
+    ):
+        return excitation_composition(
+            self,
+            idx=idx,
+            topk=topk,
+            original_numbering=original_numbering,
+            verbose=verbose,
+        )
