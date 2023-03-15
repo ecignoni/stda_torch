@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Any
 
 from collections import namedtuple
 import torch
-from .stda import sTDA
+
+sTDA = Any
 
 physconst = namedtuple(
     "PhysicalConstants",
