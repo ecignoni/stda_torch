@@ -12,7 +12,7 @@ from .utils import (
     direct_diagonalization,
     physconst,
     normalize_ao,
-    excitation_composition,
+    #     excitation_composition,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
@@ -444,17 +444,18 @@ class sTDA(sTDAVerboseMixin):
 
         return self.e
 
-    def excitation_composition(
-        self,
-        idx: int,
-        topk: int = 3,
-        original_numbering: bool = True,
-        verbose: bool = True,
-    ):
-        return excitation_composition(
-            self,
-            idx=idx,
-            topk=topk,
-            original_numbering=original_numbering,
-            verbose=verbose,
-        )
+
+#     def excitation_composition(
+#         self,
+#         idx: int,
+#         topk: int = 3,
+#         original_numbering: bool = True,
+#         verbose: bool = True,
+#     ):
+#         return excitation_composition(
+#             self,
+#             idx=idx,
+#             topk=topk,
+#             original_numbering=original_numbering,
+#             verbose=verbose,
+#         )
