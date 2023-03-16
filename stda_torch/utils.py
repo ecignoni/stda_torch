@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import List, Tuple, Union, Any
 
+import warnings
+
 from collections import namedtuple
 import torch
 
@@ -178,6 +180,47 @@ def normalize_ao(
     ovlp = torch.einsum("i,ij,j->ij", 1.0 / norm, ovlp, 1.0 / norm)
     mo_coeff = torch.einsum("i,ij->ij", norm, mo_coeff)
     return mo_coeff, ovlp
+
+
+def get_nto(
+    x: torch.Tensor, mo_occ: torch.Tensor, mo_vir: torch.Tensor, state: int = 1
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    # to provide a similar API to PySCF
+    if state == 0:
+        warnings.warn(
+            "Excited state starts from 1. " "Set state=1 for the first excited state"
+        )
+    elif state < 0:
+        pass
+    else:
+        state = state - 1
+
+    # get transition density
+    t = x[state].clone()
+
+    nocc, nvir = t.shape
+
+    # check normalization
+    if abs(torch.linalg.norm(t) - 1.0) > 1e-15:
+        warnings.warn("Transition amplitudes X are not normalized. " "Normalizing now.")
+        t *= 1.0 / torch.linalg.norm(t)
+
+    u, s, vt = torch.linalg.svd(t)
+    v = vt.conj().T
+    weights = s**2
+
+    # enforce reproducible sign
+    idx = torch.argmax(abs(u.real), axis=0)
+    u[:, u[idx, torch.arange(nocc)].real < 0] *= -1
+    idx = torch.argmax(abs(v.real), axis=0)
+    v[:, v[idx, torch.arange(nvir)].real < 0] *= -1
+
+    # NTOs
+    nto_occ = torch.matmul(mo_occ, u)
+    nto_vir = torch.matmul(mo_vir, v)
+    nto_coeff = torch.column_stack((nto_occ, nto_vir))
+
+    return weights, nto_coeff
 
 
 # def excitation_composition(
