@@ -184,7 +184,21 @@ def normalize_ao(
 
 def get_nto(
     x: torch.Tensor, mo_occ: torch.Tensor, mo_vir: torch.Tensor, state: int = 1
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """get the Natural Transition Orbitals associated with a transition
+
+    Args:
+        x: transition density, x_ia, shape=(nocc, nvir)
+        mo_occ: coefficients of the occupied MOs, shape=(nao, nocc)
+        mo_vir: coefficients of the virtual MOs, shape=(nao, nvir)
+        state: index of the excited state. 1 corresponds to the first
+             excited state
+    Returns:
+        weights: weight of each NTO (squared singular values
+               of x)
+        nto_occ: coefficients of the hole NTOs, shape=(nao, nocc)
+        nto_vir: coefficients of the particle NTOs, shape=(nao, nvir)
+    """
     # to provide a similar API to PySCF
     if state == 0:
         warnings.warn(
@@ -209,7 +223,9 @@ def get_nto(
     v = vt.conj().T
     weights = s**2
 
-    # enforce reproducible sign
+    # enforce reproducible sign:
+    # look at the biggest absolute value for each column
+    # if negative, change the sign of the column
     idx = torch.argmax(abs(u.real), axis=0)
     u[:, u[idx, torch.arange(nocc)].real < 0] *= -1
     idx = torch.argmax(abs(v.real), axis=0)
@@ -218,9 +234,9 @@ def get_nto(
     # NTOs
     nto_occ = torch.matmul(mo_occ, u)
     nto_vir = torch.matmul(mo_vir, v)
-    nto_coeff = torch.column_stack((nto_occ, nto_vir))
+    # nto_coeff = torch.column_stack((nto_occ, nto_vir))
 
-    return weights, nto_coeff
+    return weights, nto_occ, nto_vir
 
 
 # def excitation_composition(
