@@ -12,7 +12,7 @@ from .utils import (
     direct_diagonalization,
     physconst,
     normalize_ao,
-    #     excitation_composition,
+    get_nto,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
@@ -353,6 +353,16 @@ class sTDA(sTDAVerboseMixin):
             errmsg += "but you provided MO with occupancies different from 2"
             raise ValueError(errmsg)
 
+    @property
+    def mo_coeff_occ(self):
+        """coefficients of occupied MOs in sTDA"""
+        return self.mo_coeff[:, self.mask_occ]
+
+    @property
+    def mo_coeff_vir(self):
+        """coefficients of virtual MOs in sTDA"""
+        return self.mo_coeff[:, self.mask_vir + self.mask_occ[-1]]
+
     def kernel(self, nstates=3):
         # the sTDA mixin uses prints its output to self.logstream
         if self.logfile is not None:
@@ -444,18 +454,19 @@ class sTDA(sTDAVerboseMixin):
 
         return self.e
 
+    def get_nto(
+        self, state: int = 1
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Get the Natural Transition Orbitals associated with a transition
 
-#     def excitation_composition(
-#         self,
-#         idx: int,
-#         topk: int = 3,
-#         original_numbering: bool = True,
-#         verbose: bool = True,
-#     ):
-#         return excitation_composition(
-#             self,
-#             idx=idx,
-#             topk=topk,
-#             original_numbering=original_numbering,
-#             verbose=verbose,
-#         )
+        Args:
+            state: index of the excited state (first excited state is 1)
+        Returns:
+            weights: weight of each NTO (squared singular values
+                   of x)
+            nto_occ: coefficients of the hole NTOs, shape=(nao, nocc)
+            nto_vir: coefficients of the particle NTOs, shape=(nao, nvir)
+        """
+        return get_nto(
+            self.x, mo_occ=self.mo_coeff_occ, mo_vir=self.mo_coeff_vir, state=state
+        )
