@@ -184,7 +184,7 @@ def normalize_ao(
 
 def get_nto(
     x: torch.Tensor, mo_occ: torch.Tensor, mo_vir: torch.Tensor, state: int = 1
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """get the Natural Transition Orbitals associated with a transition
 
     Args:
@@ -198,6 +198,8 @@ def get_nto(
                of x)
         nto_occ: coefficients of the hole NTOs, shape=(nao, nocc)
         nto_vir: coefficients of the particle NTOs, shape=(nao, nvir)
+        nto_U: mixing matrix of occupied NTOs (U in X = U Σ V.T)
+        nto_V: mixing matrix of unoccupied NTOs (V in X = U Σ V.T)
     """
     # to provide a similar API to PySCF
     if state == 0:
@@ -236,46 +238,4 @@ def get_nto(
     nto_vir = torch.matmul(mo_vir, v)
     # nto_coeff = torch.column_stack((nto_occ, nto_vir))
 
-    return weights, nto_occ, nto_vir
-
-
-# def excitation_composition(
-#     stda: sTDA,
-#     idx: int,
-#     topk: int = 3,
-#     original_numbering: bool = True,
-#     verbose: bool = True,
-# ) -> Tuple[torch.Tensor, torch.Tensor]:
-#     if original_numbering:
-#         # number the MOs according to their original label (i.e., as if the excitation
-#         # space is not truncated)
-#         indices = torch.LongTensor(
-#             [
-#                 [o, v]
-#                 for o in stda.mask_occ
-#                 for v in stda.mask_vir + stda.mask_occ[-1] + 1
-#             ],
-#         )
-#     else:
-#         # number the MOs according to their "sTDA" label (i.e., the same number that
-#         # is printed when calling `kernel` on the sTDA object)
-#         indices = torch.LongTensor(
-#             [
-#                 [o, stda.nocc + v]
-#                 for o in torch.arange(stda.nocc)
-#                 for v in torch.arange(stda.nvir)
-#             ]
-#         )
-#
-#     x = stda.x[idx].clone() ** 2
-#
-#     if abs(torch.sum(x) - 1.0) > 1e-6:
-#         raise ValueError("Something is wrong with transition amplitudes matrix")
-#
-#     topk_values, topk_indices = torch.topk(x.reshape(-1), k=topk)
-#     topk_pairs = indices[topk_indices]
-#
-#     for value, pair in zip(topk_values, topk_pairs):
-#         print(f"{value.item()*100:6.2f} % for MO({pair[0]:4d}) -> MO({pair[1]:4d})")
-#
-#     return topk_values, topk_pairs
+    return weights, nto_occ, nto_vir, u, v

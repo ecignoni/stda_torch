@@ -456,7 +456,7 @@ class sTDA(sTDAVerboseMixin):
 
     def get_nto(
         self, state: int = 1
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Get the Natural Transition Orbitals associated with a transition
 
         Args:
