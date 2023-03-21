@@ -361,7 +361,7 @@ class sTDA(sTDAVerboseMixin):
     @property
     def mo_coeff_vir(self):
         """coefficients of virtual MOs in sTDA"""
-        return self.mo_coeff[:, self.mask_vir + self.mask_occ[-1]]
+        return self.mo_coeff[:, self.mask_vir + self.mask_occ[-1] + 1]
 
     def kernel(self, nstates=3):
         # the sTDA mixin uses prints its output to self.logstream

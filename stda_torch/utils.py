@@ -182,6 +182,12 @@ def normalize_ao(
     return mo_coeff, ovlp
 
 
+def unnormalize_ao(mo_coeff: torch.Tensor, ovlp: torch.Tensor) -> torch.Tensor:
+    norm = torch.diag(ovlp) ** 0.5
+    mo_coeff = torch.einsum("i,ij->ij", 1.0 / norm, mo_coeff)
+    return mo_coeff
+
+
 def get_nto(
     x: torch.Tensor, mo_occ: torch.Tensor, mo_vir: torch.Tensor, state: int = 1
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
