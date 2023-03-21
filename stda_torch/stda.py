@@ -467,6 +467,11 @@ class sTDA(sTDAVerboseMixin):
             nto_occ: coefficients of the hole NTOs, shape=(nao, nocc)
             nto_vir: coefficients of the particle NTOs, shape=(nao, nvir)
         """
+        if self.mo_orth:
+            warnings.warn(
+                f"You are giving orthonormalized MOs (mo_orth={self.mo_orth})"
+                ". Make sure to use the nonorthogonal MOs to plot these NTOs."
+            )
         return get_nto(
             self.x, mo_occ=self.mo_coeff_occ, mo_vir=self.mo_coeff_vir, state=state
         )
