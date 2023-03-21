@@ -217,8 +217,12 @@ def get_nto(
     nocc, nvir = t.shape
 
     # check normalization
-    if abs(torch.linalg.norm(t) - 1.0) > 1e-15:
-        warnings.warn("Transition amplitudes X are not normalized. " "Normalizing now.")
+    if abs(torch.linalg.norm(t) - 1.0) > 1e-10:
+        norm = torch.linalg.norm(t).item()
+        warnings.warn(
+            f"Transition amplitudes X are not normalized (norm={norm}) "
+            "Normalizing now."
+        )
         t *= 1.0 / torch.linalg.norm(t)
 
     u, s, vt = torch.linalg.svd(t)
