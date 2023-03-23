@@ -1,12 +1,17 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Tuple, Union, Any
+
+import numpy as np
 import torch
+
 from .integrals import eri_mo_monopole
 from .excitation_space import (
     select_csf_by_energy,
     select_csf_by_perturbation,
     restrict_to_stda_excitation_space,
 )
+
+Mol = Any
 
 
 def get_ab(
@@ -126,3 +131,60 @@ def get_ab(
         )
 
     return a, b, idx_pcsf, idx_scsf, idx_ncsf, e_pt_ncsf
+
+
+def transition_dipole(
+    ints_ao: Union[torch.Tensor, Mol],
+    orbo: torch.Tensor,
+    orbv: torch.Tensor,
+    x: torch.Tensor,
+) -> torch.Tensor:
+    """Computes the transition dipoles
+
+    Transition dipoles are computed for each excitation contained in x.
+
+    Args:
+        ints_ao: position integrals in the AO basis: <μ|r|ν>
+                 should be provided with shape (3, nao, nao).
+                 (pay attention to the origin when computing AO
+                 integrals, e.g., use the center of charge as
+                 origin)
+                 If a pyscf.gto.Mol object is given, integrals
+                 are computed using PySCF
+        orbo: coefficients of the occupied MOs
+        orbv: coefficients of the virtual MOs
+        x: transition amplitudes for each excited state
+           should be provided with shape (nexc, nocc, nvir)
+    Returns:
+        trn_dip: transition dipoles, shape (nexc, 3)
+    """
+    if torch.is_tensor(ints_ao):
+        pass
+    else:
+        # we assume it's a pyscf.gto.Mol object, if it
+        # fails we let it fail
+        def _charge_center(mol):
+            # taken from pyscf
+            charges = mol.atom_charges()
+            coords = mol.atom_coords()
+            return np.einsum("z,zr->r", charges, coords) / charges.sum()
+
+        mol = ints_ao
+        with mol.with_common_origin(_charge_center(mol)):
+            ints_ao = torch.from_numpy(mol.intor_symmetric("int1e_r", comp=3))
+
+    # convert position integrals in ao basis
+    # to the mo basis (occupied - virtual block only)
+    #
+    # <i|r|a> = Σ_μν <μ|r|ν> C_μi C_νa
+    #
+    ints_mo = torch.einsum("umn,mi,na->uia", ints_ao, orbo, orbv)
+
+    # contract position integrals in the mo basis with
+    # the transition amplitudes from stda
+    # 2 is for alpha + beta electrons
+    #
+    # μ^tr_e = Σ_ia <i|r|a> X_ia^(e)
+    #
+    trn_dip = torch.einsum("uia,eia->eu", ints_mo, x) * 2
+    return trn_dip
