@@ -310,6 +310,8 @@ class sTDA(sTDAVerboseMixin):
             mo_orth: whether the MO are orthonormal. If so, 'ovlp' is ignored
                      and Löwdin orthogonalization is skipped
             verbose: whether to be verbose
+            logfile: standard output is written to logfile. If None, sys.stdout is
+                     used
         """
         self.mo_energy = ensure_torch(mo_energy)
         self.mo_coeff = ensure_torch(mo_coeff)
