@@ -141,6 +141,7 @@ def transition_dipole(
 ) -> torch.Tensor:
     """Computes the transition dipoles
 
+    Computes the transition dipoles in the length gauge.
     Transition dipoles are computed for each excitation contained in x.
 
     Args:
@@ -156,7 +157,7 @@ def transition_dipole(
         x: transition amplitudes for each excited state
            should be provided with shape (nexc, nocc, nvir)
     Returns:
-        trn_dip: transition dipoles, shape (nexc, 3)
+        trn_dip: transition dipoles in atomic units, shape (nexc, 3)
     """
     if torch.is_tensor(ints_ao):
         pass
@@ -186,5 +187,44 @@ def transition_dipole(
     #
     # μ^tr_e = Σ_ia <i|r|a> X_ia^(e)
     #
-    trn_dip = torch.einsum("uia,eia->eu", ints_mo, x) * 2
-    return trn_dip
+    trdip = torch.einsum("uia,eia->eu", ints_mo, x) * 2
+    return trdip
+
+
+def static_polarizability(
+    ints_ao: Union[torch.Tensor, Mol],
+    orbo: torch.Tensor,
+    orbv: torch.Tensor,
+    x: torch.Tensor,
+    e: torch.Tensor,
+) -> torch.Tensor:
+    """Computes the static polarizability
+
+    Computes the static polarizability using the sum over states
+    (SOS) framework.
+
+        α_ζη = Σ_n (<Ψ_n|μ|Ψ_0> <Ψ_0|μ|Ψ_n>) / (E_n - E_0)
+
+    Args:
+        ints_ao: position integrals in the AO basis: <μ|r|ν>
+                 should be provided with shape (3, nao, nao).
+                 (pay attention to the origin when computing AO
+                 integrals, e.g., use the center of charge as
+                 origin)
+                 If a pyscf.gto.Mol object is given, integrals
+                 are computed using PySCF
+        orbo: coefficients of the occupied MOs
+        orbv: coefficients of the virtual MOs
+        x: transition amplitudes for each excited state
+           should be provided with shape (nexc, nocc, nvir)
+        e: excitation energies
+    Returns:
+        pol: polarizability tensor in atomic units, shape (3, 3)
+    """
+    trdip = transition_dipole(ints_ao=ints_ao, orbo=orbo, orbv=orbv, x=x)
+    if len(trdip.shape) != 2:
+        raise RuntimeError(f"wrong shape for transition dipoles: shape={trdip.shape}")
+    if len(e.shape) != 1:
+        raise RuntimeError(f"wrong shape for stda excitation energies: shape={e.shape}")
+    pol = torch.einsum("em,en->mn", trdip / e[:, None], trdip) * 2
+    return pol
