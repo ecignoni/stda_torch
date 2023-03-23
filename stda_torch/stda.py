@@ -12,12 +12,12 @@ from .utils import (
     direct_diagonalization,
     physconst,
     normalize_ao,
-    get_nto,
     ensure_torch,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
+from .nto import get_nto
 
 import numpy as np
 import torch
