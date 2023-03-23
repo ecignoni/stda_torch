@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Any
 
 import sys
 import warnings
@@ -15,12 +15,15 @@ from .utils import (
     ensure_torch,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
-from .linear_response import get_ab
+from .linear_response import get_ab, transition_dipole
 from .integrals import charge_density_monopole
 from .nto import get_nto
 
 import numpy as np
 import torch
+
+# PySCF Mol object
+Mol = Any
 
 
 class sTDAVerboseMixin:
@@ -479,4 +482,28 @@ class sTDA(sTDAVerboseMixin):
             )
         return get_nto(
             self.x, mo_occ=self.mo_coeff_occ, mo_vir=self.mo_coeff_vir, state=state
+        )
+
+    def transition_dipole(
+        self, ints_ao: Union[torch.Tensor, np.ndarray, Mol]
+    ) -> torch.Tensor:
+        """Computes the transition dipoles
+
+        Transition dipoles are computed for each excitation contained in x.
+
+        Args:
+            ints_ao: position integrals in the AO basis: <μ|r|ν>
+                     should be provided with shape (3, nao, nao).
+                     (pay attention to the origin when computing AO
+                     integrals, e.g., use the center of charge as
+                     origin)
+                     If a pyscf.gto.Mol object is given, integrals
+                     are computed using PySCF
+        Returns:
+            trn_dip: transition dipoles, shape (nexc, 3)
+        """
+        if type(ints_ao) is np.ndarray:
+            ints_ao = torch.from_numpy(ints_ao)
+        return transition_dipole(
+            ints_ao, orbo=self.mo_coeff_occ, orbv=self.mo_coeff_vir, x=self.x
         )
