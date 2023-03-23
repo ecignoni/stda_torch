@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import sys
 import warnings
@@ -13,11 +13,13 @@ from .utils import (
     physconst,
     normalize_ao,
     get_nto,
+    ensure_torch,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
 from .linear_response import get_ab
 from .integrals import charge_density_monopole
 
+import numpy as np
 import torch
 
 
@@ -271,13 +273,13 @@ class sTDA(sTDAVerboseMixin):
 
     def __init__(
         self,
-        mo_energy: torch.Tensor,
-        mo_coeff: torch.Tensor,
-        mo_occ: torch.Tensor,
-        ovlp: torch.Tensor,
+        mo_energy: Union[torch.Tensor, np.ndarray],
+        mo_coeff: Union[torch.Tensor, np.ndarray],
+        mo_occ: Union[torch.Tensor, np.ndarray],
+        ovlp: Union[torch.Tensor, np.ndarray],
         natm: int,
         ao_labels: List[Tuple[int, str, str, str]],
-        coords: torch.Tensor,
+        coords: Union[torch.Tensor, np.ndarray],
         atom_pure_symbols: List[str],
         ax: float,
         alpha: float = None,
@@ -309,14 +311,14 @@ class sTDA(sTDAVerboseMixin):
                      and Löwdin orthogonalization is skipped
             verbose: whether to be verbose
         """
-        self.mo_energy = mo_energy
-        self.mo_coeff = mo_coeff
-        self.mo_occ = mo_occ
+        self.mo_energy = ensure_torch(mo_energy)
+        self.mo_coeff = ensure_torch(mo_coeff)
+        self.mo_occ = ensure_torch(mo_occ)
         self.check_restricted()
-        self.ovlp = ovlp
+        self.ovlp = ensure_torch(ovlp)
         self.natm = natm
         self.ao_labels = ao_labels
-        self.coords = coords
+        self.coords = ensure_torch(coords)
         self.atom_pure_symbols = atom_pure_symbols
         self.ax = ax
         self._ax_alpha, self._ax_beta = get_alpha_beta(ax)

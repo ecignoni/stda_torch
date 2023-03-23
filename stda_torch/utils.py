@@ -5,6 +5,7 @@ import warnings
 
 from collections import namedtuple
 import torch
+import numpy as np
 
 sTDA = Any
 
@@ -110,6 +111,15 @@ symbol_to_charge = {
     #     " Pu": ,
 }
 symbol_to_charge = {k.strip(): v for k, v in symbol_to_charge.items()}
+
+
+def ensure_torch(t: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
+    if torch.is_tensor(t):
+        return t
+    elif type(t) is np.ndarray:
+        return torch.from_numpy(t)
+    else:
+        raise ValueError("input variable is not torch.Tensor nor np.ndarray")
 
 
 def isqrtm(A: torch.Tensor) -> torch.Tensor:
