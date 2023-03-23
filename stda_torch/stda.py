@@ -436,7 +436,8 @@ class sTDA(sTDAVerboseMixin):
 
         # sTDA transition amplitudes
         self.nocc, self.nvir = len(self.mask_occ), len(self.mask_vir)
-        xy = [(xi, 0.0) for xi in x.T]
+        # also normalize the transition amplitudes
+        xy = [(xi * 0.5**0.5, 0.0) for xi in x.T]
         active = torch.concatenate((self.pcsf, self.scsf))
         self.x = []
         self.y = []
