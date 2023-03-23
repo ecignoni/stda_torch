@@ -10,6 +10,7 @@ from .excitation_space import (
     select_csf_by_perturbation,
     restrict_to_stda_excitation_space,
 )
+from .utils import ensure_torch
 
 Mol = Any
 
@@ -159,8 +160,8 @@ def transition_dipole(
     Returns:
         trn_dip: transition dipoles in atomic units, shape (nexc, 3)
     """
-    if torch.is_tensor(ints_ao):
-        pass
+    if torch.is_tensor(ints_ao) or type(ints_ao) is np.ndarray:
+        ints_ao = ensure_torch(ints_ao)
     else:
         # we assume it's a pyscf.gto.Mol object, if it
         # fails we let it fail

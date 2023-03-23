@@ -15,7 +15,7 @@ from .utils import (
     ensure_torch,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
-from .linear_response import get_ab, transition_dipole
+from .linear_response import get_ab, transition_dipole, static_polarizability
 from .integrals import charge_density_monopole
 from .nto import get_nto
 
@@ -502,8 +502,40 @@ class sTDA(sTDAVerboseMixin):
         Returns:
             trn_dip: transition dipoles, shape (nexc, 3)
         """
-        if type(ints_ao) is np.ndarray:
-            ints_ao = torch.from_numpy(ints_ao)
         return transition_dipole(
-            ints_ao, orbo=self.mo_coeff_occ, orbv=self.mo_coeff_vir, x=self.x
+            ints_ao=ints_ao, orbo=self.mo_coeff_occ, orbv=self.mo_coeff_vir, x=self.x
+        )
+
+    def static_polarizability(
+        self, ints_ao: Union[torch.Tensor, np.ndarray, Mol]
+    ) -> torch.Tensor:
+        """Computes the static polarizability
+
+        Computes the static polarizability using the sum over states
+        (SOS) framework.
+
+            α_ζη = Σ_n (<Ψ_n|μ|Ψ_0> <Ψ_0|μ|Ψ_n>) / (E_n - E_0)
+
+        Args:
+            ints_ao: position integrals in the AO basis: <μ|r|ν>
+                     should be provided with shape (3, nao, nao).
+                     (pay attention to the origin when computing AO
+                     integrals, e.g., use the center of charge as
+                     origin)
+                     If a pyscf.gto.Mol object is given, integrals
+                     are computed using PySCF
+            orbo: coefficients of the occupied MOs
+            orbv: coefficients of the virtual MOs
+            x: transition amplitudes for each excited state
+               should be provided with shape (nexc, nocc, nvir)
+            e: excitation energies
+        Returns:
+            pol: polarizability tensor in atomic units, shape (3, 3)
+        """
+        return static_polarizability(
+            ints_a=ints_ao,
+            orbo=self.mo_coeff_occ,
+            orbv=self.mo_coeff_vir,
+            x=self.x,
+            e=self.e,
         )
