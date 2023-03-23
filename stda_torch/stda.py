@@ -514,7 +514,7 @@ class sTDA(sTDAVerboseMixin):
         Computes the static polarizability using the sum over states
         (SOS) framework.
 
-            α_ζη = Σ_n (<Ψ_n|μ|Ψ_0> <Ψ_0|μ|Ψ_n>) / (E_n - E_0)
+            α_ζη = Σ_n (<Ψ_n|μ_ζ|Ψ_0> <Ψ_0|μ_η|Ψ_n>) / (E_n - E_0)
 
         Args:
             ints_ao: position integrals in the AO basis: <μ|r|ν>
