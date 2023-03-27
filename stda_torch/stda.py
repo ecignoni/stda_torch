@@ -221,6 +221,7 @@ class sTDAVerboseMixin:
             )
             print("state    eV      nm       fL        Rv(corr)", file=self.logstream)
             for i, (e, x) in enumerate(zip(self.e, self.x)):
+                x = x / (0.5**0.5)
                 _, top3indices = torch.topk(abs(x.reshape(-1)), 3)
                 top3_ia_pairs = indices[top3indices]
                 top3values = x.reshape(-1)[top3indices]
