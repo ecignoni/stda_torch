@@ -320,7 +320,7 @@ class sTDA(sTDAVerboseMixin):
         self.mo_coeff = ensure_torch(mo_coeff)
         self.mo_occ = ensure_torch(mo_occ)
         self.check_restricted()
-        self.ovlp = ensure_torch(ovlp)
+        self.ovlp = ensure_torch(ovlp) if ovlp is not None else ovlp
         self.natm = natm
         self.ao_labels = ao_labels
         self.coords = ensure_torch(coords)
