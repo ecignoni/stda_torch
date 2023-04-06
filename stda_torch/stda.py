@@ -486,7 +486,10 @@ class sTDA(sTDAVerboseMixin):
         )
 
     def transition_dipole(
-        self, ints_ao: Union[torch.Tensor, np.ndarray, Mol]
+        self,
+        ints_ao: Union[torch.Tensor, np.ndarray, Mol],
+        orbo: torch.Tensor = None,
+        orbv: torch.Tensor = None,
     ) -> torch.Tensor:
         """Computes the transition dipoles
 
@@ -503,12 +506,22 @@ class sTDA(sTDAVerboseMixin):
         Returns:
             trn_dip: transition dipoles, shape (nexc, 3)
         """
-        return transition_dipole(
-            ints_ao=ints_ao, orbo=self.mo_coeff_occ, orbv=self.mo_coeff_vir, x=self.x
-        )
+        if self.mo_orth and orbo is None and orbv is None:
+            errmsg = f"You are using orthonormalized MOs (mo_orth={self.mo_orth})."
+            errmsg += " Cannot compute the transition dipoles without the nonorthonormalized MOs."
+            errmsg += " Please provide nonorthonormalized MOs as the 'orbo' and 'orbv' arguments"
+            raise ValueError(errmsg)
+
+        orbo = self.mo_coeff_occ if orbo is None else orbo
+        orbv = self.mo_coeff_vir if orbv is None else orbv
+
+        return transition_dipole(ints_ao=ints_ao, orbo=orbo, orbv=orbv, x=self.x)
 
     def static_polarizability(
-        self, ints_ao: Union[torch.Tensor, np.ndarray, Mol]
+        self,
+        ints_ao: Union[torch.Tensor, np.ndarray, Mol],
+        orbo: torch.Tensor = None,
+        orbv: torch.Tensor = None,
     ) -> torch.Tensor:
         """Computes the static polarizability
 
@@ -533,10 +546,21 @@ class sTDA(sTDAVerboseMixin):
         Returns:
             pol: polarizability tensor in atomic units, shape (3, 3)
         """
+        if self.mo_orth and orbo is None and orbv is None:
+            errmsg = f"You are using orthonormalized MOs (mo_orth={self.mo_orth})."
+            errmsg += (
+                " Cannot compute the polarizability without the nonorthonormalized MOs."
+            )
+            errmsg += " Please provide nonorthonormalized MOs as the 'orbo' and 'orbv' arguments"
+            raise ValueError(errmsg)
+
+        orbo = self.mo_coeff_occ if orbo is None else orbo
+        orbv = self.mo_coeff_vir if orbv is None else orbv
+
         return static_polarizability(
             ints_a=ints_ao,
-            orbo=self.mo_coeff_occ,
-            orbv=self.mo_coeff_vir,
+            orbo=orbo,
+            orbv=orbv,
             x=self.x,
             e=self.e,
         )
