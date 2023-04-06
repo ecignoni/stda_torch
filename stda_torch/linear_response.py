@@ -134,6 +134,27 @@ def get_ab(
     return a, b, idx_pcsf, idx_scsf, idx_ncsf, e_pt_ncsf
 
 
+def transition_density(
+    orbo: torch.Tensor, orbv: torch.Tensor, x: torch.Tensor
+) -> torch.Tensor:
+    """Computes the transition density in the AO basis
+
+    Computes the transition density in the AO basis, as:
+
+        X^(e)_μν = Σ_i Σ_a X^(e)_ia C_μi C_νa
+
+    for each excitation indexed by e.
+
+    Args:
+        orbo: coefficients of the occupied MOs, shape (nao, nocc)
+        orbv: coefficients of the virtual MOs, shape (nao, nvir)
+        x: transition amplitudes for each excited state, shape (nexc, nocc, nvir)
+    Returns:
+        x_ao: transition densities in the AO basis, shape (nexc, nao, nao)
+    """
+    return torch.einsum("eia,mi,na->emn", x, orbo, orbv) * 2
+
+
 def transition_dipole(
     ints_ao: Union[torch.Tensor, Mol],
     orbo: torch.Tensor,
@@ -153,10 +174,9 @@ def transition_dipole(
                  origin)
                  If a pyscf.gto.Mol object is given, integrals
                  are computed using PySCF
-        orbo: coefficients of the occupied MOs
-        orbv: coefficients of the virtual MOs
-        x: transition amplitudes for each excited state
-           should be provided with shape (nexc, nocc, nvir)
+        orbo: coefficients of the occupied MOs, shape (nao, nocc)
+        orbv: coefficients of the virtual MOs, shape (nao, nvir)
+        x: transition amplitudes for each excited state, shape (nexc, nocc, nvir)
     Returns:
         trn_dip: transition dipoles in atomic units, shape (nexc, 3)
     """

@@ -15,7 +15,12 @@ from .utils import (
     ensure_torch,
 )
 from .excitation_space import screen_mo, csf_idx_as_ia
-from .linear_response import get_ab, transition_dipole, static_polarizability
+from .linear_response import (
+    get_ab,
+    transition_dipole,
+    static_polarizability,
+    transition_density,
+)
 from .integrals import charge_density_monopole
 from .nto import get_nto
 
@@ -485,6 +490,28 @@ class sTDA(sTDAVerboseMixin):
             self.x, mo_occ=self.mo_coeff_occ, mo_vir=self.mo_coeff_vir, state=state
         )
 
+    def transition_density(
+        self, orbo: torch.Tensor = None, orbv: torch.Tensor = None
+    ) -> torch.Tensor:
+        """Computes the transition density
+
+        Args:
+            orbo: coefficients of the occupied MOs, shape (nao, nocc)
+            orbv: coefficients of the virtual MOs, shape (nao, nvir)
+        Returns:
+            x_ao: transition density in the AO basis, shape (nao, nao)
+        """
+        if self.mo_orth and (orbo is None or orbv is None):
+            errmsg = f"You are using orthonormalized MOs (mo_orth={self.mo_orth})."
+            errmsg += " Cannot compute the transition density without the nonorthonormalized MOs."
+            errmsg += " Please provide nonorthonormalized MOs as the 'orbo' and 'orbv' arguments"
+            raise ValueError(errmsg)
+
+        orbo = self.mo_coeff_occ if orbo is None else orbo
+        orbv = self.mo_coeff_vir if orbv is None else orbv
+
+        return transition_density(orbo=orbo, orbv=orbv, x=self.x)
+
     def transition_dipole(
         self,
         ints_ao: Union[torch.Tensor, np.ndarray, Mol],
@@ -503,10 +530,12 @@ class sTDA(sTDAVerboseMixin):
                      origin)
                      If a pyscf.gto.Mol object is given, integrals
                      are computed using PySCF
+            orbo: coefficients of the occupied MOs, shape (nao, nocc)
+            orbv: coefficients of the virtual MOs, shape (nao, nvir)
         Returns:
             trn_dip: transition dipoles, shape (nexc, 3)
         """
-        if self.mo_orth and orbo is None and orbv is None:
+        if self.mo_orth and (orbo is None or orbv is None):
             errmsg = f"You are using orthonormalized MOs (mo_orth={self.mo_orth})."
             errmsg += " Cannot compute the transition dipoles without the nonorthonormalized MOs."
             errmsg += " Please provide nonorthonormalized MOs as the 'orbo' and 'orbv' arguments"
@@ -538,15 +567,12 @@ class sTDA(sTDAVerboseMixin):
                      origin)
                      If a pyscf.gto.Mol object is given, integrals
                      are computed using PySCF
-            orbo: coefficients of the occupied MOs
-            orbv: coefficients of the virtual MOs
-            x: transition amplitudes for each excited state
-               should be provided with shape (nexc, nocc, nvir)
-            e: excitation energies
+            orbo: coefficients of the occupied MOs, shape (nao, nocc)
+            orbv: coefficients of the virtual MOs, shape (nao, nvir)
         Returns:
             pol: polarizability tensor in atomic units, shape (3, 3)
         """
-        if self.mo_orth and orbo is None and orbv is None:
+        if self.mo_orth and (orbo is None or orbv is None):
             errmsg = f"You are using orthonormalized MOs (mo_orth={self.mo_orth})."
             errmsg += (
                 " Cannot compute the polarizability without the nonorthonormalized MOs."
